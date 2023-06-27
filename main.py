@@ -52,7 +52,7 @@ del model
 # Loading model and reset environment
 model = RecurrentPPO.load("ppo_recurrent")
 obs = env.reset()
-# ciao
+# ciao bro
 # Cell and hidden state of the LSTM loading
 lstm_states = None
 num_envs = 1  # OSS: possibility to implement vectorized environments
