@@ -15,14 +15,14 @@ model = RecurrentPPO(
     env,
     verbose=1,
     batch_size=2 * 32,
-    n_steps=2 * 2560,
+    n_steps=2 * 1920,
     n_epochs=10,
-    learning_rate=0.0001,
+    learning_rate=0.0005,
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
-    ent_coef=0,
+    ent_coef=1e-4,
     tensorboard_log="./tensorboard/",
 )
 print(model.policy)
@@ -40,8 +40,8 @@ model.save("ppo_recurrent")
 m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
-dt = 0.25
-ToF = 20
+dt = 0.5
+ToF = 30
 max_thrust = 29620
 state_space = 13
 actions_space = 3
@@ -52,7 +52,7 @@ del model
 # Loading model and reset environment
 model = RecurrentPPO.load("ppo_recurrent")
 obs = env.reset()
-
+# ciao
 # Cell and hidden state of the LSTM loading
 lstm_states = None
 num_envs = 1  # OSS: possibility to implement vectorized environments

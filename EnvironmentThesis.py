@@ -283,15 +283,15 @@ class CustomEnv(gym.Env):
         rhodot = np.linalg.norm(self.state[9:12]) * self.l_star / self.t_star
 
         # Dense reward
-        reward = (1 / 10) * np.log(x_norm) ** 2
+        reward = (1 / 50) * np.log(x_norm) ** 2
         self.infos = {"Episode success": "approaching"}
         print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
         # Episodic reward
-        if self.time > 0.99 * self.max_time and rho <= 1 and rhodot <= 0.2:  # OSS: molto meglio farlo andare a ToF finale costante, sia per RVD che per convergenza.
+        if self.time > 0.98 * self.max_time and rho <= 1 and rhodot <= 0.2:  # OSS: molto meglio farlo andare a ToF finale costante, sia per RVD che per convergenza.
             self.infos = {"Episode success": "docked"}
             print("Successful docking.")
-            reward += 20
+            reward += 10
             self.done = True
 
         # Time constraint
