@@ -7,8 +7,58 @@ from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
 
 # TRAINING
+# Data initialization
+# Data
+m_star = 6.0458 * 1e24  # Kilograms
+l_star = 3.844 * 1e8  # Meters
+t_star = 375200  # Seconds
+
+dt = 0.5
+ToF = 30
+
+rho_max = 100
+rhodot_max = 6
+
+max_thrust = 29620
+mass = 21000
+state_space = 13
+actions_space = 3
+
+x0t_state = np.array(
+    [
+        1.02206694e00,
+        -1.33935003e-07,
+        -1.82100000e-01,
+        -1.71343849e-07,
+        -1.03353155e-01,  # TODO: check tutti questi numerini
+        6.52058535e-07,
+    ]
+)  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
+x0r_state = np.array(
+    [
+        1.11022302e-13,
+        1.33935003e-07,
+        -4.22495372e-13,
+        1.71343849e-07,
+        -3.75061093e-13,
+        -6.52058535e-07,
+    ]
+)
+x0r_mass = np.array([mass / m_star])
+x0_vec = np.concatenate((x0t_state, x0r_state, x0r_mass))
+x0_std_vec = np.absolute(
+    np.concatenate((np.zeros(6), 0.1 * x0r_state, 0.005 * x0r_mass))
+)
+
 # Define environment and model
-env = CustomEnv()
+env = CustomEnv(
+    max_time=ToF,
+    dt=dt,
+    rho_max=rho_max,
+    rhodot_max=rhodot_max,
+    x0=x0_vec,
+    x0_std=x0_std_vec,
+)
 check_env(env)
 model = RecurrentPPO(
     "MlpLstmPolicy",
@@ -28,7 +78,7 @@ model = RecurrentPPO(
 print(model.policy)
 
 # Start learning
-model.learn(4000000, progress_bar=True)
+model.learn(total_timesteps=4000000, progress_bar=True)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -36,16 +86,6 @@ print(mean_reward)
 model.save("ppo_recurrent")
 
 # TESTING
-# Data
-m_star = 6.0458 * 1e24  # Kilograms
-l_star = 3.844 * 1e8  # Meters
-t_star = 375200  # Seconds
-dt = 0.5
-ToF = 30
-max_thrust = 29620
-state_space = 13
-actions_space = 3
-
 # Remove to demonstrate saving and loading
 del model
 
@@ -53,49 +93,49 @@ del model
 model = RecurrentPPO.load("ppo_recurrent")
 obs = env.reset()
 
-# Cell and hidden state of the LSTM loading
-lstm_states = None
-num_envs = 1  # OSS: possibility to implement vectorized environments
-
 # Trajectory propagation
-episode_starts = np.ones(
-    (num_envs,), dtype=bool
-)  # OSS: Episode start signals are used to reset the lstm states
-episode_ends = np.zeros((num_envs,), dtype=bool)
+lstm_states = None
+done = True
 obs_vec = np.array([])
 rewards_vec = np.array([])
 actions_vec = np.array([])
 
-while episode_ends == np.zeros((num_envs,), dtype=bool):
+while True:
     # Action sampling and propagation
     action, lstm_states = model.predict(
-        obs, state=lstm_states, episode_start=episode_starts, deterministic=True
-    )
-    obs, rewards, dones, info = env.step(action)
-    episode_starts = dones
-    if episode_starts == np.ones((num_envs,), dtype=bool):
-        episode_ends = np.ones((num_envs,), dtype=bool)
+        obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
+    )  # OSS: Episode start signals are used to reset the lstm states
+    obs, rewards, done, info = env.step(action)
 
     # Saving
-    actions_vec = np.append(actions_vec, max_thrust * action / np.linalg.norm(np.array([1, 1, 1])))
-    obs_vec = np.append(obs_vec, env.scaler_reverse(obs))
+    actions_vec = np.append(actions_vec, env.scaler_reverse_action(action))
+    obs_vec = np.append(obs_vec, env.scaler_reverse_observation(obs))
     rewards_vec = np.append(rewards_vec, rewards)
+
+    if done:
+        break
 
 # PLOTS
 # Re-organize arrays
-obs_vec = np.transpose(np.reshape(obs_vec, (state_space, int(len(obs_vec) / state_space)), order='F'))
-actions_vec = np.transpose(np.reshape(actions_vec, (actions_space, int(len(actions_vec) / actions_space)), order='F'))
+obs_vec = np.transpose(
+    np.reshape(obs_vec, (state_space, int(len(obs_vec) / state_space)), order="F")
+)  # TODO: sono poco eleganti...
+actions_vec = np.transpose(
+    np.reshape(
+        actions_vec, (actions_space, int(len(actions_vec) / actions_space)), order="F"
+    )
+)
 
 # Plotted quantities
 position = obs_vec[:, 6:9] * l_star
 velocity = obs_vec[:, 9:12] * l_star / t_star
 thrust = actions_vec
 t = np.linspace(0, ToF, int(ToF / dt))
-t = t[0:len(position)]
+t = t[0: len(position)]
 
 # Plot full trajectory
 plt.close()
-plt.figure()
+plt.figure()  # TODO: metti come utils questi
 ax = plt.axes(projection="3d")
 ax.plot3D(
     position[:, 0],
@@ -190,4 +230,4 @@ plt.xlim(t[0], t[-1])
 plt.savefig("plots\Thrust.pdf", bbox_inches="tight")  # Save
 
 # TODO: maybe last plots can be written as MCM (con mean e standard deviation sui plot)
-# TODO: sistema GitHub
+# TODO: migliora plot
