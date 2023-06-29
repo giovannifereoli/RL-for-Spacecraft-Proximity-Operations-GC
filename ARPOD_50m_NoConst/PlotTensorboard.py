@@ -20,5 +20,4 @@ plt.xlabel("Learning Step [-]")
 plt.ylabel("Mean Reward [-]")
 plt.savefig("plots\MeanReward.pdf")  # Save
 
-# TODO: ci vorrei la standard deviation qui
 

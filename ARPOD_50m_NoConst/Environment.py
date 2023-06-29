@@ -4,7 +4,8 @@ from gym import spaces
 import numpy as np
 from scipy.integrate import solve_ivp
 
-class CustomEnv(gym.Env):
+
+class ArpodCrtbp(gym.Env):
     # Initialize class
     def __init__(
         self,
@@ -15,7 +16,7 @@ class CustomEnv(gym.Env):
         x0=np.zeros(13),
         x0_std=np.zeros(13),
     ):
-        super(CustomEnv, self).__init__()
+        super(ArpodCrtbp, self).__init__()
         # DATA
         self.mu = 0.012150583925359
         self.m_star = 6.0458 * 1e24  # Kilograms
@@ -27,6 +28,8 @@ class CustomEnv(gym.Env):
         self.max_thrust = 29620 / (self.m_star * self.l_star / self.t_star**2)
         self.spec_impulse = 310 / self.t_star
         self.g0 = 9.81 / (self.l_star / self.t_star**2)
+        self.ang_corr = np.deg2rad(10)
+        self.rad_kso = 200
         self.rho_max = rho_max
         self.rhodot_max = rhodot_max
         self.infos = {"Episode success": "lost"}
@@ -78,7 +81,9 @@ class CustomEnv(gym.Env):
         # INITIAL CONDITIONS
         self.state0 = x0
         self.state0_std = x0_std
-        self.state = self.scaler_apply_observation(np.random.normal(self.state0, self.state0_std))
+        self.state = self.scaler_apply_observation(
+            np.random.normal(self.state0, self.state0_std)
+        )
         # OSS: state is always normalized in the flow BESIDE during integration!
 
     # MDP step
@@ -190,7 +195,7 @@ class CustomEnv(gym.Env):
                 )
                 + Tz / m,
             ]
-            dxdt[12] = - T_norm / (spec_impulse * g0)
+            dxdt[12] = -T_norm / (spec_impulse * g0)
 
             return dxdt
 
@@ -213,11 +218,11 @@ class CustomEnv(gym.Env):
             atol=2.220446049250313e-14,
             args=(T, self.mu, self.spec_impulse, self.g0),  # OSS: it shall be a tuple
         )
-        self.state = np.transpose(sol.y).flatten()  # TODO: check dimensioni
+        self.state = np.transpose(sol.y).flatten()
         self.time += self.dt
 
         # REWARD
-        reward = self.get_reward()
+        reward = self.get_reward(T)
 
         # Time constraint
         if self.time >= self.max_time:
@@ -226,13 +231,20 @@ class CustomEnv(gym.Env):
         # Return scaled state
         self.state = self.scaler_apply_observation(obs=self.state)
 
-        return self.state, reward, self.done, self.infos
+        return (
+            self.state,
+            reward,
+            self.done,
+            self.infos,
+        )  # TODO: check flow dati con print()
 
     # Reset between episodes
     def reset(self):
         # Set initial conditions (OSS: already normalized)
         print("New initial condition")
-        self.state = self.scaler_apply_observation(np.random.normal(self.state0, self.state0_std).flatten())
+        self.state = self.scaler_apply_observation(
+            np.random.normal(self.state0, self.state0_std).flatten()
+        )
 
         # Miscellaneous
         self.infos = {"Episode success": "lost"}
@@ -241,7 +253,7 @@ class CustomEnv(gym.Env):
 
         return self.state  # TODO: è normale avere self.state ovunque?
 
-    def get_reward(self):
+    def get_reward(self, T):
         # Useful data
         x_norm = np.linalg.norm(
             np.array(
@@ -253,20 +265,21 @@ class CustomEnv(gym.Env):
         ) / np.linalg.norm(np.array([1, 1, 1, 1, 1, 1]))
         rho = np.linalg.norm(self.state[6:9]) * self.l_star
         rhodot = np.linalg.norm(self.state[9:12]) * self.l_star / self.t_star
+        T_norm = np.linalg.norm(T)  # OSS: not-scaled, already fine with self.max_thrust!
         print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
-        # Dense reward
+        # Dense reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
         self.infos = {"Episode success": "approaching"}
 
-        # Episodic reward
-        if (
-            self.time > 0.98 * self.max_time and rho <= 1 and rhodot <= 0.2
-        ):  # OSS: molto meglio farlo andare a ToF finale costante, sia per RVD che per convergenza.
+        if rho <= 1 and rhodot <= 0.1:
             self.infos = {"Episode success": "docked"}
-            print("Successful docking.")
-            reward += 10
-            self.done = True
+
+        # Dense reward constraints
+        reward += self.is_outside()
+
+        # Dense reward thrust optimization
+        # reward += - 0.1 * T_norm / self.max_thrust
 
         return reward
 
@@ -287,10 +300,26 @@ class CustomEnv(gym.Env):
         obs = ((1 + obs_scaled) * (self.max - self.min)) / 2 + self.min
         return obs
 
-    def render(self, mode="human"):
+    def is_outside(self):
+        # Initialization (matrix for +y-axis approach corridor)
+        B_const = np.array(
+            [
+                [- 1, - np.tan(self.ang_corr), 0],
+                [1, - np.tan(self.ang_corr), 0],
+                [0, - np.tan(self.ang_corr), 1],
+                [0, - np.tan(self.ang_corr), - 1],
+            ]
+        )
+        pos_vec = self.state[6:9] * self.l_star
+        reward_cons = 0
+
+        # Computation
+        if np.any(np.dot(B_const, pos_vec)) > 0:  # OSS: if B*x>0 constraint violated
+            reward_cons = - (1 / 10) * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2
+            self.infos = {"Episode success": "collided"}
+            print("Collision")
+
+        return reward_cons  # TODO: debug questo e recheck
+
+    def render(self, mode="human"):  # TODO: leggi paper cinesi
         pass
-
-
-# TODO: vectorize env?
-# TODO: wrapper per VenNormalize?
-# TODO: check che ora tutto vada

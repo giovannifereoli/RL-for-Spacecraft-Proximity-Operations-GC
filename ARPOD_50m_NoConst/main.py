@@ -2,18 +2,17 @@
 import numpy as np
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.evaluation import evaluate_policy
-from EnvironmentThesis import CustomEnv
+from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
 
 # TRAINING
-# Data initialization
-# Data
+# Data and initialization
 m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
-dt = 0.5
+dt = 0.5  # TODO: prova anche 1 secondo
 ToF = 30
 
 rho_max = 100
@@ -47,11 +46,18 @@ x0r_state = np.array(
 x0r_mass = np.array([mass / m_star])
 x0_vec = np.concatenate((x0t_state, x0r_state, x0r_mass))
 x0_std_vec = np.absolute(
-    np.concatenate((np.zeros(6), 0.1 * x0r_state, 0.005 * x0r_mass))
+    np.concatenate(
+        (
+            np.zeros(6),
+            2.5 * np.ones(3) / l_star,
+            0.5 * np.ones(3) / (l_star / t_star),
+            0.005 * x0r_mass,
+        )
+    )
 )
 
 # Define environment and model
-env = CustomEnv(
+env = ArpodCrtbp(
     max_time=ToF,
     dt=dt,
     rho_max=rho_max,
@@ -64,21 +70,22 @@ model = RecurrentPPO(
     "MlpLstmPolicy",
     env,
     verbose=1,
-    batch_size=2 * 32,
+    batch_size=2 * 32,  # TODO: forse per velocizzare abbassa questo
     n_steps=2 * 1920,
     n_epochs=10,
-    learning_rate=0.0005,
+    learning_rate=0.0001,
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-4,
-    tensorboard_log="./tensorboard/",
+    # policy_kwargs=dict(enable_critic_lstm=False, optimizer_kwargs=dict(weight_decay=1e-5)),
+    tensorboard_log="./tensorboard/"
 )
 print(model.policy)
 
 # Start learning
-model.learn(total_timesteps=4000000, progress_bar=True)
+model.learn(total_timesteps=2500000, progress_bar=True)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -96,9 +103,9 @@ obs = env.reset()
 # Trajectory propagation
 lstm_states = None
 done = True
-obs_vec = np.array([])
+obs_vec = env.scaler_reverse_observation(obs)
 rewards_vec = np.array([])
-actions_vec = np.array([])
+actions_vec = np.zeros(3)
 
 while True:
     # Action sampling and propagation
@@ -108,30 +115,21 @@ while True:
     obs, rewards, done, info = env.step(action)
 
     # Saving
-    actions_vec = np.append(actions_vec, env.scaler_reverse_action(action))
-    obs_vec = np.append(obs_vec, env.scaler_reverse_observation(obs))
+    actions_vec = np.vstack(actions_vec, env.scaler_reverse_action(action))
+    obs_vec = np.vstack(obs_vec, env.scaler_reverse_observation(obs))
     rewards_vec = np.append(rewards_vec, rewards)
 
+    # Stop propagation
     if done:
         break
 
 # PLOTS
-# Re-organize arrays
-obs_vec = np.transpose(
-    np.reshape(obs_vec, (state_space, int(len(obs_vec) / state_space)), order="F")
-)  # TODO: sono poco eleganti...
-actions_vec = np.transpose(
-    np.reshape(
-        actions_vec, (actions_space, int(len(actions_vec) / actions_space)), order="F"
-    )
-)
-
 # Plotted quantities
 position = obs_vec[:, 6:9] * l_star
 velocity = obs_vec[:, 9:12] * l_star / t_star
+mass = obs_vec[:, 12] * m_star
 thrust = actions_vec
-t = np.linspace(0, ToF, int(ToF / dt))
-t = t[0: len(position)]
+t = np.linspace(0, ToF, int(ToF / dt) + 1)
 
 # Plot full trajectory
 plt.close()
@@ -201,6 +199,15 @@ plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
 plt.savefig("plots\Position.pdf")  # Save
 
+# Plot mass usage
+plt.close()  # Initialize
+plt.figure()
+plt.plot(t, mass, c="r", linewidth=2)
+plt.grid(True)
+plt.xlabel("Time [s]")
+plt.ylabel("Mass [kg]")
+plt.savefig("plots\Mass.pdf")  # Save
+
 # Plot CoM control action
 plt.close()
 plt.figure()
@@ -229,5 +236,8 @@ plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
 plt.savefig("plots\Thrust.pdf", bbox_inches="tight")  # Save
 
-# TODO: maybe last plots can be written as MCM (con mean e standard deviation sui plot)
-# TODO: migliora plot
+# TODO:  speed up training
+# TODO: esplode ancora alla fine
+# TODO: cose da fare sono mlp comparison, ocp comparison, basilisk real dynamics, diversi cases, robustezza,..
+# TODO: gli episodic non sono imparati bene dalla vf e danno problemi
+
