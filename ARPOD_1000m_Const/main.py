@@ -12,11 +12,11 @@ m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
-dt = 0.5
-ToF = 30
+dt = 2
+ToF = 600
 
-rho_max = 100
-rhodot_max = 6
+rho_max = 11000
+rhodot_max = 70
 
 max_thrust = 29620
 mass = 21000
@@ -26,21 +26,21 @@ actions_space = 3
 x0t_state = np.array(
     [
         1.02206694e00,
-        -1.33935003e-07,
+        -2.61552389e-06,
         -1.82100000e-01,
-        -1.71343849e-07,
-        -1.03353155e-01,  # TODO: check tutti questi numerini
-        6.52058535e-07,
+        -3.34605533e-06,
+        -1.03353155e-01,
+        1.27335994e-05,
     ]
 )  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
     [
-        1.11022302e-13,
-        1.33935003e-07,
-        -4.22495372e-13,
-        1.71343849e-07,
-        -3.75061093e-13,
-        -6.52058535e-07,
+        4.23387991e-11,
+        2.61552389e-06,
+        -1.61122476e-10,
+        3.34605533e-06,
+        -1.43029505e-10,
+        -1.27335994e-05,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -49,7 +49,7 @@ x0_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            2.5 * np.ones(3) / l_star,
+            50 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
         )
@@ -71,7 +71,7 @@ model = RecurrentPPO(
     env,
     verbose=1,
     batch_size=2 * 32,
-    n_steps=2 * 1920,
+    n_steps=2 * 9600,
     n_epochs=10,
     learning_rate=0.0001,
     gamma=0.99,
@@ -80,12 +80,12 @@ model = RecurrentPPO(
     max_grad_norm=0.1,
     ent_coef=1e-4,
     # policy_kwargs=dict(enable_critic_lstm=False, optimizer_kwargs=dict(weight_decay=1e-5)),
-    tensorboard_log="./tensorboard/"
+    tensorboard_log="./tensorboard/",
 )
 print(model.policy)
 
 # Start learning
-model.learn(total_timesteps=3000000, progress_bar=True)
+model.learn(total_timesteps=4000000, progress_bar=True)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -235,3 +235,4 @@ plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
 plt.savefig("plots\Thrust.pdf", bbox_inches="tight")  # Save
+

@@ -76,7 +76,7 @@ class ArpodCrtbp(gym.Env):
                 self.rhodot_max / (self.l_star / self.t_star),
                 0.8 * x0[-1],
             ]
-        ).flatten()  # TODO: prova ad aggiungere tempo qua e mettere reward1 al fine ToF
+        ).flatten()
 
         # INITIAL CONDITIONS
         self.state0 = x0
@@ -269,7 +269,7 @@ class ArpodCrtbp(gym.Env):
         print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
         # Dense reward RVD
-        reward = (1 / 100) * np.log(x_norm) ** 2    # TODO: riprova numeri alti
+        reward = (1 / 100) * np.log(x_norm) ** 2
         self.infos = {"Episode success": "approaching"}
         if rho <= 1 and rhodot <= 0.1:
             self.infos = {"Episode success": "docked"}
@@ -292,7 +292,7 @@ class ArpodCrtbp(gym.Env):
     # Apply scalers
     def scaler_apply_observation(self, obs):
         obs_scaled = -1 + 2 * (obs - self.min) / (self.max - self.min)
-        return obs_scaled
+        return obs_scaled  # TODO: check qua scalers
 
     # Remove scalers
     def scaler_reverse_observation(self, obs_scaled):
@@ -310,15 +310,15 @@ class ArpodCrtbp(gym.Env):
             ]
         )
         pos_vec = self.state[6:9] * self.l_star
-        reward_cons = 0  # TODO: attento che dovrebbero avere stessa dimensione con la R sopra per essere imparate insieme
+        reward_cons = 0
 
         # Computation
         if np.any(np.dot(B_const, pos_vec) > 0):  # OSS: if B*x>0 constraint violated
-            reward_cons = - (1 / 5) * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2
+            reward_cons = - 2 * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2
             self.infos = {"Episode success": "collided"}
             print("Collision.")
 
-        return reward_cons  # TODO: debug questo e recheck, sta roba funziona? PENSALA ANCHE DIVERSA, magari continua
+        return reward_cons
 
-    def render(self, mode="human"):  # TODO: leggi paper cinesi
+    def render(self, mode="human"):
         pass
