@@ -20,31 +20,32 @@ rhodot_max = 6
 
 max_thrust = 29620
 mass = 21000
-state_space = 13
+state_space = 14
 actions_space = 3
 
 x0t_state = np.array(
     [
         1.02206694e00,
-        -1.33935003e-07,
+        -1.32282592e-07,
         -1.82100000e-01,
-        -1.71343849e-07,
-        -1.03353155e-01,  # TODO: check tutti questi numerini
-        6.52058535e-07,
+        -1.69229909e-07,
+        -1.03353155e-01,
+        6.44013821e-07
     ]
 )  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
     [
-        1.11022302e-13,
-        1.33935003e-07,
-        -4.22495372e-13,
-        1.71343849e-07,
-        -3.75061093e-13,
-        -6.52058535e-07,
+        1.08357767e-13,
+        1.32282592e-07,
+        -4.12142542e-13,
+        1.69229909e-07,
+        -3.65860120e-13,
+        -6.44013821e-07
     ]
 )
 x0r_mass = np.array([mass / m_star])
-x0_vec = np.concatenate((x0t_state, x0r_state, x0r_mass))
+x0_time_rem = np.array([ToF / t_star])
+x0_vec = np.concatenate((x0t_state, x0r_state, x0r_mass, x0_time_rem))
 x0_std_vec = np.absolute(
     np.concatenate(
         (
@@ -52,6 +53,7 @@ x0_std_vec = np.absolute(
             2.5 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
+            np.zeros(1)
         )
     )
 )

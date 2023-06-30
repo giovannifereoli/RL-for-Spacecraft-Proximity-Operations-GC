@@ -38,7 +38,7 @@ class ArpodCrtbp(gym.Env):
         # STATE AND ACTION SPACES
         self.action_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
         self.observation_space = spaces.Box(
-            low=-1.25, high=+1.25, shape=(13,), dtype=np.float64
+            low=-1.25, high=+1.25, shape=(14,), dtype=np.float64
         )
 
         # SCALERS
@@ -57,7 +57,8 @@ class ArpodCrtbp(gym.Env):
                 -self.rhodot_max / (self.l_star / self.t_star),
                 -self.rhodot_max / (self.l_star / self.t_star),
                 -self.rhodot_max / (self.l_star / self.t_star),
-                1.2 * x0[-1],
+                1.2 * x0[-2],
+                0
             ]
         ).flatten()
         self.max = np.array(
@@ -74,9 +75,10 @@ class ArpodCrtbp(gym.Env):
                 self.rhodot_max / (self.l_star / self.t_star),
                 self.rhodot_max / (self.l_star / self.t_star),
                 self.rhodot_max / (self.l_star / self.t_star),
-                0.8 * x0[-1],
+                0.8 * x0[-2],
+                self.max_time
             ]
-        ).flatten()  # TODO: prova ad aggiungere tempo qua e mettere reward1 al fine ToF
+        ).flatten()
 
         # INITIAL CONDITIONS
         self.state0 = x0
@@ -206,6 +208,7 @@ class ArpodCrtbp(gym.Env):
         # EQUATIONS OF MOTION
         # Initialization
         x0 = self.scaler_reverse_observation(obs_scaled=self.state).flatten()
+        x0 = x0[0:-1]
 
         # Integration
         sol = solve_ivp(
@@ -218,8 +221,9 @@ class ArpodCrtbp(gym.Env):
             atol=2.220446049250313e-14,
             args=(T, self.mu, self.spec_impulse, self.g0),  # OSS: it shall be a tuple
         )
-        self.state = np.transpose(sol.y).flatten()
         self.time += self.dt
+        self.state = np.transpose(sol.y).flatten()
+        self.state = np.append(self.state, self.max_time - self.time)
 
         # REWARD
         reward = self.get_reward(T)
@@ -233,7 +237,7 @@ class ArpodCrtbp(gym.Env):
 
         return (
             self.state,
-            reward,
+            reward,   # TODO: check self.state ovunque e costruzione ultimo stato
             self.done,
             self.infos,
         )
@@ -310,17 +314,31 @@ class ArpodCrtbp(gym.Env):
             ]
         )
         pos_vec = self.state[6:9] * self.l_star
-        pos_ver = pos_vec / np.linalg.norm(pos_vec)
-        n_ver = np.array([0, 1, 0])
-        cos_ang = np.dot(pos_ver, n_ver)
-        reward_cons = 0  # TODO: attento che dovrebbero avere stessa dimensione con la R sopra per essere imparate insieme
 
-        # Computation
+        # Computation collision
         if np.any(np.dot(B_const, pos_vec) > 0) and rho > 1.5:  # OSS: if B*x>0 constraint violated
             self.infos = {"Episode success": "collided"}
-            print("Collision.")  # TODO: guarda scorsoglio che ha combinato qua
+            print("Collision.")
 
-        reward_cons = - (1 / 10) * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2  # TODO: debug questo e recheck, sta roba funziona? PENSALA ANCHE DIVERSA, magari continua
+        # Computation reward
+        reward_cons = - (1 / 10) * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2  # TODO: debug questo e recheck, sta roba funziona? PENSALA ANCHE DIVERSA, magari continua, leggi scorsoglio
+
+        return reward_cons
+
+    def is_outside2(self, rho):
+        # Initialization (matrix for +y-axis approach corridor)
+        pos_vec = self.state[6:9] * self.l_star
+        cone_vec = np.array([0, 1, 0])
+        const = - np.dot(pos_vec, cone_vec) + rho * np.cos(self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
+
+        # Computation collision
+        if const > 0 and rho > 1.5:  # OSS: if B*x>0 constraint violated
+            self.infos = {"Episode success": "collided"}
+            print("Collision.")
+
+        # Computation reward
+        reward_cons = - (1 / 10) * np.exp(0.5 * const / self.rho_max) ** 2  # TODO: debug questo e recheck, sta roba funziona? PENSALA ANCHE DIVERSA, magari continua, leggi scorsoglio
+        # reward_cons = - const / self.rho_max
 
         return reward_cons
 
