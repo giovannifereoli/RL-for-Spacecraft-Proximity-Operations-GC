@@ -269,7 +269,7 @@ class ArpodCrtbp(gym.Env):
         print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
         # Dense reward RVD
-        reward = (1 / 100) * np.log(x_norm) ** 2
+        reward = (1 / 200) * np.log(x_norm) ** 2
         self.infos = {"Episode success": "approaching"}
         if rho <= 1 and rhodot <= 0.1:
             self.infos = {"Episode success": "docked"}
@@ -314,7 +314,7 @@ class ArpodCrtbp(gym.Env):
 
         # Computation
         if np.any(np.dot(B_const, pos_vec) > 0):  # OSS: if B*x>0 constraint violated
-            reward_cons = - 2 * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2
+            reward_cons = - (1 / 50) * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2
             self.infos = {"Episode success": "collided"}
             print("Collision.")
 

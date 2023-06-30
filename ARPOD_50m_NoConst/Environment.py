@@ -28,7 +28,7 @@ class ArpodCrtbp(gym.Env):
         self.max_thrust = 29620 / (self.m_star * self.l_star / self.t_star**2)
         self.spec_impulse = 310 / self.t_star
         self.g0 = 9.81 / (self.l_star / self.t_star**2)
-        self.ang_corr = np.deg2rad(10)
+        self.ang_corr = np.deg2rad(15)
         self.rad_kso = 200
         self.rho_max = rho_max
         self.rhodot_max = rhodot_max
@@ -269,13 +269,13 @@ class ArpodCrtbp(gym.Env):
         print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
         # Dense reward RVD
-        reward = (1 / 100) * np.log(x_norm) ** 2    # TODO: riprova numeri alti
+        reward = (1 / 50) * np.log(x_norm) ** 2
         self.infos = {"Episode success": "approaching"}
         if rho <= 1 and rhodot <= 0.1:
             self.infos = {"Episode success": "docked"}
 
         # Dense reward constraints
-        reward += self.is_outside()
+        reward += self.is_outside(rho)
 
         # Dense reward thrust optimization
         # reward += - 0.1 * T_norm / self.max_thrust
@@ -299,7 +299,7 @@ class ArpodCrtbp(gym.Env):
         obs = ((1 + obs_scaled) * (self.max - self.min)) / 2 + self.min
         return obs
 
-    def is_outside(self):
+    def is_outside(self, rho):
         # Initialization (matrix for +y-axis approach corridor)
         B_const = np.array(
             [
@@ -310,15 +310,19 @@ class ArpodCrtbp(gym.Env):
             ]
         )
         pos_vec = self.state[6:9] * self.l_star
+        pos_ver = pos_vec / np.linalg.norm(pos_vec)
+        n_ver = np.array([0, 1, 0])
+        cos_ang = np.dot(pos_ver, n_ver)
         reward_cons = 0  # TODO: attento che dovrebbero avere stessa dimensione con la R sopra per essere imparate insieme
 
         # Computation
-        if np.any(np.dot(B_const, pos_vec) > 0):  # OSS: if B*x>0 constraint violated
-            reward_cons = - (1 / 5) * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2
+        if np.any(np.dot(B_const, pos_vec) > 0) and rho > 1.5:  # OSS: if B*x>0 constraint violated
             self.infos = {"Episode success": "collided"}
-            print("Collision.")
+            print("Collision.")  # TODO: guarda scorsoglio che ha combinato qua
 
-        return reward_cons  # TODO: debug questo e recheck, sta roba funziona? PENSALA ANCHE DIVERSA, magari continua
+        reward_cons = - (1 / 10) * np.exp(0.5 * np.max(np.dot(B_const, pos_vec)) / self.rho_max) ** 2  # TODO: debug questo e recheck, sta roba funziona? PENSALA ANCHE DIVERSA, magari continua
+
+        return reward_cons
 
     def render(self, mode="human"):  # TODO: leggi paper cinesi
         pass
