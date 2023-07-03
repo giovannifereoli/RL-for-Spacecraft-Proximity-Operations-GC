@@ -15,6 +15,9 @@ class ArpodCrtbp(gym.Env):
         rhodot_max=1,
         x0=np.zeros(13),
         x0_std=np.zeros(13),
+        ang_corr=np.rad2deg(15),
+        safety_radius=1,
+        safety_vel=0.1
     ):
         super(ArpodCrtbp, self).__init__()
         # DATA
@@ -28,9 +31,9 @@ class ArpodCrtbp(gym.Env):
         self.max_thrust = 29620 / (self.m_star * self.l_star / self.t_star**2)
         self.spec_impulse = 310 / self.t_star
         self.g0 = 9.81 / (self.l_star / self.t_star**2)
-        self.ang_corr = np.deg2rad(15)  # TODO: puoi provare 20
-        self.len_kso_cyl = 5
-        self.rad_cyl = np.tan(self.ang_corr) * self.len_kso_cyl
+        self.ang_corr = ang_corr
+        self.safety_radius = safety_radius
+        self.safety_vel = safety_vel
         self.rad_kso = 200
         self.rho_max = rho_max
         self.rhodot_max = rhodot_max
@@ -277,7 +280,7 @@ class ArpodCrtbp(gym.Env):
         # Dense reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
         self.infos = {"Episode success": "approaching"}
-        if rho <= 1.5 and rhodot <= 0.25:
+        if rho <= self.safety_radius and rhodot <= self.safety_vel:
             self.infos = {"Episode success": "docked"}
 
         # Dense reward constraints
@@ -309,7 +312,7 @@ class ArpodCrtbp(gym.Env):
         # Initialization (matrix for +y-axis approach corridor)
         pos_vec = self.state[6:9] * self.l_star
         cone_vec = np.array([0, 1, 0])
-        len_cut = np.sqrt((1 ** 2) / np.square(np.tan(self.ang_corr)))
+        len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
         const = - np.dot(pos_vec, cone_vec) + rho * np.cos(self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
         const2 = - np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(self.ang_corr)
 
@@ -318,10 +321,6 @@ class ArpodCrtbp(gym.Env):
         if const2 > 0:  # OSS: just a signal
             self.infos = {"Episode success": "collided"}
             print("Collision.")
-        # Cylinder
-        # if rho < self.len_kso_cyl and np.sqrt(pos_vec[0] ** 2 + pos_vec[2] ** 2) > self.rad_cyl:
-            # self.infos = {"Episode success": "collided"}
-            # print("Collision.")
 
         # Computation reward (OSS: if B*x>0 constraint violated)
         reward_cons = - (1 / 10) * np.exp(0.5 * const / self.rho_max) ** 2
@@ -332,7 +331,7 @@ class ArpodCrtbp(gym.Env):
         # Initialization (matrix for +y-axis approach corridor)
         pos_vec = self.state[6:9] * self.l_star
         cone_vec = np.array([0, 1, 0])
-        len_cut = np.sqrt((1 ** 2) / np.square(np.tan(self.ang_corr)))
+        len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
         const = - np.dot(pos_vec, cone_vec) + rho * np.cos(self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
         const2 = - np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(self.ang_corr)
         reward_cons = 0
@@ -354,9 +353,8 @@ class ArpodCrtbp(gym.Env):
         # Initialization (matrix for +y-axis approach corridor)
         pos_vec = self.state[6:9] * self.l_star
         cone_vec = np.array([0, 1, 0])
-        const = - np.dot(pos_vec, cone_vec) + rho * np.cos(self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
         ang = np.arccos(np.dot(pos_vec, cone_vec) / rho)
-        len_cut = np.sqrt((1 ** 2) / np.square(np.tan(self.ang_corr)))
+        len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
         const2 = - np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(self.ang_corr)
 
         # Computation collision

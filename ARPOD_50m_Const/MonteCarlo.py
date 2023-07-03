@@ -17,6 +17,10 @@ ToF = 30
 rho_max = 100
 rhodot_max = 6
 
+ang_corr = np.deg2rad(15)
+safety_radius = 1
+safety_vel = 0.1
+
 max_thrust = 29620
 mass = 21000
 state_space = 14
@@ -65,6 +69,9 @@ env = ArpodCrtbp(
     rhodot_max=rhodot_max,
     x0=x0_vec,
     x0_std=x0_std_vec,
+    ang_corr=ang_corr,
+    safety_radius=safety_radius,
+    safety_vel = safety_vel
 )
 check_env(env)
 model = RecurrentPPO(
@@ -89,7 +96,7 @@ print(model.policy)
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent")
+model = RecurrentPPO.load("ppo_recurrentDense")
 
 # Trajectory propagation
 num_episode_MCM = 100
@@ -149,23 +156,13 @@ prob_collision = collided.sum() * 100 / num_episode_MCM
 prob_RVD = docked.sum() * 100 / num_episode_MCM
 
 # Approach Corridor: truncated cone + cylinder
-fin_const_pos = 1
-ang_corr = np.deg2rad(15)
-len_cut = np.sqrt((fin_const_pos ** 2) / np.square(np.tan(ang_corr)))
+len_cut = np.sqrt((safety_radius ** 2) / np.square(np.tan(ang_corr)))
 rad_kso = np.max(obs_mean[:, 6:9]) + len_cut
-rad_kso_cyl = 5
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
 y_cone = np.sqrt((x_cone**2 + z_cone**2) / np.square(np.tan(ang_corr)))
 y_cone = np.where(y_cone > rad_kso, np.nan, y_cone) - len_cut
 y_cone = np.where(y_cone < 0, np.nan, y_cone)
-
-rad_cyl = np.tan(ang_corr) * rad_kso_cyl
-y = np.linspace(0, rad_kso_cyl, 1000)
-theta = np.linspace(0, 2 * np.pi, 1000)
-theta_grid, y_cyl = np.meshgrid(theta, y)
-x_cyl = rad_cyl * np.cos(theta_grid)
-z_cyl = rad_cyl * np.sin(theta_grid)
 
 # Plot full trajectory statistics
 plt.close()
@@ -210,7 +207,6 @@ for _ in range(1000):
         alpha=0.01,
     )
 ax.plot_surface(x_cone, y_cone, z_cone, color="k", alpha=0.1)
-# ax.plot_surface(x_cyl, y_cyl, z_cyl, color="k", alpha=0.1)
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
 ax.zaxis.set_rotate_label(False)
 ax.set_zlabel("$\delta z$ [m]", labelpad=10, rotation=90)

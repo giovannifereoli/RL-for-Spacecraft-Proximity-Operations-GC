@@ -18,6 +18,10 @@ ToF = 30
 rho_max = 100
 rhodot_max = 6
 
+ang_corr = np.deg2rad(15)
+safety_radius = 1
+safety_vel = 0.1
+
 max_thrust = 29620
 mass = 21000
 state_space = 14
@@ -66,6 +70,9 @@ env = ArpodCrtbp(
     rhodot_max=rhodot_max,
     x0=x0_vec,
     x0_std=x0_std_vec,
+    ang_corr=ang_corr,
+    safety_radius=safety_radius,
+    safety_vel = safety_vel
 )
 check_env(env)
 model = RecurrentPPO(
