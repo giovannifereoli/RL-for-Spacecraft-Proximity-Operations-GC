@@ -56,7 +56,7 @@ x0_std_vec = np.absolute(
             2.5 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
-            np.zeros(1)
+            np.zeros(1),
         )
     )
 )
@@ -71,15 +71,15 @@ env = ArpodCrtbp(
     x0_std=x0_std_vec,
     ang_corr=ang_corr,
     safety_radius=safety_radius,
-    safety_vel = safety_vel
+    safety_vel=safety_vel,
 )
 check_env(env)
 model = RecurrentPPO(
     "MlpLstmPolicy",
     env,
     verbose=1,
-    batch_size=2*32,
-    n_steps=2*1920,
+    batch_size=2 * 32,
+    n_steps=2 * 1920,
     n_epochs=10,
     learning_rate=0.0001,
     gamma=0.99,
@@ -99,7 +99,7 @@ del model
 model = RecurrentPPO.load("ppo_recurrentDense")
 
 # Trajectory propagation
-num_episode_MCM = 100
+num_episode_MCM = 200
 num_ep = 0
 collided = np.zeros(num_episode_MCM)
 docked = np.zeros(num_episode_MCM)
@@ -156,7 +156,7 @@ prob_collision = collided.sum() * 100 / num_episode_MCM
 prob_RVD = docked.sum() * 100 / num_episode_MCM
 
 # Approach Corridor: truncated cone + cylinder
-len_cut = np.sqrt((safety_radius ** 2) / np.square(np.tan(ang_corr)))
+len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
 rad_kso = np.max(obs_mean[:, 6:9]) + len_cut
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
@@ -168,45 +168,39 @@ y_cone = np.where(y_cone < 0, np.nan, y_cone)
 plt.close()
 plt.figure()
 ax = plt.axes(projection="3d")
-ax.plot3D(
-    obs_mean[:, 6],
-    obs_mean[:, 7],
-    obs_mean[:, 8],
-    c="k",
-    linewidth=2,
+mean_traj = ax.plot3D(
+    obs_mean[:, 6], obs_mean[:, 7], obs_mean[:, 8], c="k", linewidth=2, label="Mean"
 )
+std_traj = ax.plot3D(np.nan, np.nan, np.nan, c="red", label="Std")
+for _ in range(1000):
+    std_traj = ax.plot3D(
+        np.random.normal(obs_mean[:, 6], obs_std[:, 6]),
+        np.random.normal(obs_mean[:, 7], obs_std[:, 7]),
+        np.random.normal(obs_mean[:, 8], obs_std[:, 8]),
+        c="r",
+        alpha=0.005,
+    )
 start = ax.scatter(
     obs_mean[0, 6],
     obs_mean[0, 7],
     obs_mean[0, 8],
-    color="blue",
+    color="orange",
     marker="s",
+    label="Start",
 )
 stop = ax.scatter(
     obs_mean[-1, 6],
     obs_mean[-1, 7],
     obs_mean[-1, 8],
-    color="red",
+    color="cyan",
     marker="o",
+    label="Stop",
 )
-goal = ax.scatter(0, 0, 0, color="green", marker="^")
-plt.legend(
-    (start, stop, goal),
-    ("Start", "Stop", "Goal"),
-    scatterpoints=1,
-    loc="upper right",
-)
+goal = ax.scatter(0, 0, 0, color="green", marker="^", label="Goal")
 ax.set_xlabel("$\delta x$ [m]", labelpad=15)
 plt.xticks([0])
-for _ in range(1000):
-    ax.plot3D(
-        np.random.normal(obs_mean[:, 6], obs_std[:, 6]),
-        np.random.normal(obs_mean[:, 7], obs_std[:, 7]),
-        np.random.normal(obs_mean[:, 8], obs_std[:, 8]),
-        c="r",
-        alpha=0.01,
-    )
 ax.plot_surface(x_cone, y_cone, z_cone, color="k", alpha=0.1)
+plt.legend(loc="upper center", ncol=5, bbox_to_anchor=(0.5, 0.88))
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
 ax.zaxis.set_rotate_label(False)
 ax.set_zlabel("$\delta z$ [m]", labelpad=10, rotation=90)
@@ -221,8 +215,14 @@ ax.zaxis.pane.fill = False
 ax.view_init(elev=0, azim=0)
 ax.set_title(
     "RVD probability: %.1f %% - Collision probability: %.1f %% \n Mean Final State: [%.3f m, %.3f m/s]"
-    % (prob_RVD, prob_collision, np.linalg.norm(obs_mean[-1, 6:9]), np.linalg.norm(obs_mean[-1, 9:12]))
+    % (
+        prob_RVD,
+        prob_collision,
+        np.linalg.norm(obs_mean[-1, 6:9]),
+        np.linalg.norm(obs_mean[-1, 9:12]),
+    ),
+    y=1,
+    pad=-3
 )
 plt.savefig("plots\MCM_Trajectory.pdf")  # Save
 plt.show()
-
