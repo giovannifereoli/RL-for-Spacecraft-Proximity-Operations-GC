@@ -8,16 +8,16 @@ from scipy.integrate import solve_ivp
 class ArpodCrtbp(gym.Env):
     # Initialize class
     def __init__(
-        self,
-        max_time=1,
-        dt=1,
-        rho_max=1,
-        rhodot_max=1,
-        x0=np.zeros(13),
-        x0_std=np.zeros(13),
-        ang_corr=np.rad2deg(15),
-        safety_radius=1,
-        safety_vel=0.1
+            self,
+            max_time=1,
+            dt=1,
+            rho_max=1,
+            rhodot_max=1,
+            x0=np.zeros(13),
+            x0_std=np.zeros(13),
+            ang_corr=np.rad2deg(15),
+            safety_radius=1,
+            safety_vel=0.1
     ):
         super(ArpodCrtbp, self).__init__()
         # DATA
@@ -28,9 +28,9 @@ class ArpodCrtbp(gym.Env):
         self.time = 0
         self.max_time = max_time / self.t_star
         self.dt = dt / self.t_star
-        self.max_thrust = 29620 / (self.m_star * self.l_star / self.t_star**2)
+        self.max_thrust = 29620 / (self.m_star * self.l_star / self.t_star ** 2)
         self.spec_impulse = 310 / self.t_star
-        self.g0 = 9.81 / (self.l_star / self.t_star**2)
+        self.g0 = 9.81 / (self.l_star / self.t_star ** 2)
         self.ang_corr = ang_corr
         self.safety_radius = safety_radius
         self.safety_vel = safety_vel
@@ -97,12 +97,12 @@ class ArpodCrtbp(gym.Env):
     def step(self, action):
         # RELATIVE CRT3BP
         def rel_crtbp(
-            t,
-            x,
-            T,
-            mu=0.012150583925359,
-            spec_impulse=310 / self.t_star,
-            g0=9.81 / (self.l_star / self.t_star**2),
+                t,
+                x,
+                T,
+                mu=0.012150583925359,
+                spec_impulse=310 / self.t_star,
+                g0=9.81 / (self.l_star / self.t_star ** 2),
         ):
             """
                         Circular Restricted Three-Body Problem Dynamics
@@ -143,8 +143,8 @@ class ArpodCrtbp(gym.Env):
             # Relative CRTBP Dynamics
             r1t = [xt + mu, yt, zt]
             r2t = [xt + mu - 1, yt, zt]
-            r1t_norm = np.sqrt((xt + mu) ** 2 + yt**2 + zt**2)
-            r2t_norm = np.sqrt((xt + mu - 1) ** 2 + yt**2 + zt**2) + t * 0
+            r1t_norm = np.sqrt((xt + mu) ** 2 + yt ** 2 + zt ** 2)
+            r2t_norm = np.sqrt((xt + mu - 1) ** 2 + yt ** 2 + zt ** 2) + t * 0
             rho = [xr, yr, zr]
 
             # Target Equations
@@ -152,13 +152,13 @@ class ArpodCrtbp(gym.Env):
             dxdt[3:6] = [
                 2 * ytdot
                 + xt
-                - (1 - mu) * (xt + mu) / r1t_norm**3
-                - mu * (xt + mu - 1) / r2t_norm**3,
+                - (1 - mu) * (xt + mu) / r1t_norm ** 3
+                - mu * (xt + mu - 1) / r2t_norm ** 3,
                 -2 * xtdot
                 + yt
-                - (1 - mu) * yt / r1t_norm**3
-                - mu * yt / r2t_norm**3,
-                -(1 - mu) * zt / r1t_norm**3 - mu * zt / r2t_norm**3,
+                - (1 - mu) * yt / r1t_norm ** 3
+                - mu * yt / r2t_norm ** 3,
+                -(1 - mu) * zt / r1t_norm ** 3 - mu * zt / r2t_norm ** 3,
             ]
 
             # Chaser equations
@@ -168,37 +168,37 @@ class ArpodCrtbp(gym.Env):
                 + xr
                 + (1 - mu)
                 * (
-                    (xt + mu) / r1t_norm**3
-                    - (xt + xr + mu) / np.linalg.norm(np.add(r1t, rho)) ** 3
+                        (xt + mu) / r1t_norm ** 3
+                        - (xt + xr + mu) / np.linalg.norm(np.add(r1t, rho)) ** 3
                 )
                 + mu
                 * (
-                    (xt + mu - 1) / r2t_norm**3
-                    - (xt + xr + mu - 1) / np.linalg.norm(np.add(r2t, rho)) ** 3
+                        (xt + mu - 1) / r2t_norm ** 3
+                        - (xt + xr + mu - 1) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Tx / m,
                 -2 * xrdot
                 + yr
                 + (1 - mu)
                 * (
-                    yt / r1t_norm**3
-                    - (yt + yr) / np.linalg.norm(np.add(r1t, rho)) ** 3
+                        yt / r1t_norm ** 3
+                        - (yt + yr) / np.linalg.norm(np.add(r1t, rho)) ** 3
                 )
                 + mu
                 * (
-                    yt / r2t_norm**3
-                    - (yt + yr) / np.linalg.norm(np.add(r2t, rho)) ** 3
+                        yt / r2t_norm ** 3
+                        - (yt + yr) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Ty / m,
                 (1 - mu)
                 * (
-                    zt / r1t_norm**3
-                    - (zt + zr) / np.linalg.norm(np.add(r1t, rho)) ** 3
+                        zt / r1t_norm ** 3
+                        - (zt + zr) / np.linalg.norm(np.add(r1t, rho)) ** 3
                 )
                 + mu
                 * (
-                    zt / r2t_norm**3
-                    - (zt + zr) / np.linalg.norm(np.add(r2t, rho)) ** 3
+                        zt / r2t_norm ** 3
+                        - (zt + zr) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Tz / m,
             ]
@@ -234,7 +234,7 @@ class ArpodCrtbp(gym.Env):
         reward = self.get_reward(T)
 
         # Time constraint
-        if self.time >= self.max_time:   # TODO: ragiona ancora se ti piace che vada come un pazzo all'inizio
+        if self.time >= self.max_time:
             self.done = True
 
         # Return scaled state
@@ -242,7 +242,7 @@ class ArpodCrtbp(gym.Env):
 
         return (
             self.state,
-            reward,   # TODO: check self.state ovunque e costruzione ultimo stato
+            reward,  # TODO: check self.state ovunque e costruzione ultimo stato
             self.done,
             self.infos,
         )
@@ -279,22 +279,25 @@ class ArpodCrtbp(gym.Env):
 
         # Dense reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
+        # if rho >= self.rho_max: # TODO: prova questo qua
+        # self.done = True
+        # reward += - 10
         self.infos = {"Episode success": "approaching"}
         if rho <= self.safety_radius and rhodot <= self.safety_vel:
             self.infos = {"Episode success": "docked"}
 
         # Dense reward constraints
-        reward += self.is_outside(rho)  # TODO: fix constraint rispettati cosi cosi
+        reward += self.is_outside(rho)
 
         # Dense reward thrust optimization
-        reward += - (1 / 100) * np.exp(T_norm / self.max_thrust) ** 2  # TODO: se funziona proa ad alzare coefficiente, ragionaci un po
+        reward += - (1 / 100) * np.exp(T_norm / self.max_thrust) ** 2
 
         return reward
 
     # Re-scale action from policy net
     def scaler_reverse_action(self, action):
         action_notscaled = (
-            self.max_thrust * action / np.linalg.norm(np.array([1, 1, 1]))
+                self.max_thrust * action / np.linalg.norm(np.array([1, 1, 1]))
         )
         return action_notscaled
 
@@ -313,7 +316,8 @@ class ArpodCrtbp(gym.Env):
         pos_vec = self.state[6:9] * self.l_star
         cone_vec = np.array([0, 1, 0])
         len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
-        const = - np.dot(pos_vec, cone_vec) + rho * np.cos(self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
+        const = - np.dot(pos_vec, cone_vec) + rho * np.cos(
+            self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
         const2 = - np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(self.ang_corr)
 
         # Computation collision (OSS: cone for reward != cone for collision signal)
@@ -332,7 +336,8 @@ class ArpodCrtbp(gym.Env):
         pos_vec = self.state[6:9] * self.l_star
         cone_vec = np.array([0, 1, 0])
         len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
-        const = - np.dot(pos_vec, cone_vec) + rho * np.cos(self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
+        const = - np.dot(pos_vec, cone_vec) + rho * np.cos(
+            self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
         const2 = - np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(self.ang_corr)
         reward_cons = 0
 
@@ -369,6 +374,3 @@ class ArpodCrtbp(gym.Env):
 
     def render(self, mode="human"):
         pass
-
-# TODO: more time, few hours
-

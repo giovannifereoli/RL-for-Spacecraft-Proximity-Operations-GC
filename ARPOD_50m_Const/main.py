@@ -12,8 +12,9 @@ m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
-dt = 0.5  # TODO: prova un sec, prova batch diversi, prova a velocizzare.... se non hai tempo l'importante è che converga
+dt = 0.5
 ToF = 30
+batch_size = 64
 
 rho_max = 100
 rhodot_max = 6
@@ -72,19 +73,19 @@ env = ArpodCrtbp(
     x0_std=x0_std_vec,
     ang_corr=ang_corr,
     safety_radius=safety_radius,
-    safety_vel = safety_vel
+    safety_vel=safety_vel
 )
 check_env(env)
 model = RecurrentPPO(
     "MlpLstmPolicy",
     env,
     verbose=1,
-    batch_size=2*32,
-    n_steps=2*1920,
+    batch_size=batch_size,
+    n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.0001,  # OSS: ormai sono abbastanza sicuro con questi HP.
+    learning_rate=0.0001,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
     gamma=0.99,
-    gae_lambda=1,  # TODO: prova 0.00005 lr su questo
+    gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-4,
@@ -95,19 +96,19 @@ model = RecurrentPPO(
 print(model.policy)
 
 # Start learning
-model.learn(total_timesteps=3000000, progress_bar=True)  # TODO: rifletti piu sul sgnificato di metaRL e come metterlo alla prova
+# model.learn(total_timesteps=3000000, progress_bar=True)  # TODO: rifletti piu sul sgnificato di metaRL e come metterlo alla prova
 
 # Evaluation and saving
-mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
-print(mean_reward)
-model.save("ppo_recurrent")
+# mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
+# print(mean_reward)
+# model.save("ppo_recurrent")
 
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent")
+model = RecurrentPPO.load("ppo_recurrentDense")
 obs = env.reset()
 
 # Trajectory propagation
@@ -245,3 +246,25 @@ plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
 plt.savefig("plots\Thrust.pdf", bbox_inches="tight")  # Save
+
+# Plot angular velocity
+dTdt_ver = np.zeros([len(t), 3])
+w_ang = np.zeros(len(t))
+w_ang[0] = np.nan
+dTdt_ver = np.diff(thrust / np.linalg.norm(thrust), axis=0) / dt   # Finite difference
+Tb_ver = np.array([1, 0, 0])
+for i in range(len(w_ang) - 1):  # OSS: T aligned with x-axis body-frame assumptions.
+    wy = dTdt_ver[i, 2] / Tb_ver[0]
+    wz = - dTdt_ver[i, 1] / Tb_ver[0]
+    w_ang[i + 1] = np.rad2deg(np.linalg.norm(np.array([0, wy, wz])))
+plt.close()  # Initialize
+plt.figure()
+plt.plot(t, w_ang, c="c", linewidth=2)
+plt.grid(True)
+plt.xlabel("Time [s]")
+plt.ylabel("Angular velocity [deg/s]")
+plt.savefig("plots\AngVel.pdf")  # Save
+
+# TODO: pensa a questo un pochino, puoi risolvere?
+
+
