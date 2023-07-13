@@ -6,7 +6,7 @@ from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
 
-# TRAINING
+# TRAINING (OSS: With TL ToF / dt = steps x episode = const)
 # Data and initialization
 m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters

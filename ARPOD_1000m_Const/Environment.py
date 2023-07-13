@@ -28,7 +28,7 @@ class ArpodCrtbp(gym.Env):
         self.time = 0
         self.max_time = max_time / self.t_star
         self.dt = dt / self.t_star
-        self.max_thrust = (1 / 3) * 29620 / (self.m_star * self.l_star / self.t_star**2)
+        self.max_thrust = 29620 / (self.m_star * self.l_star / self.t_star**2)
         self.spec_impulse = 310 / self.t_star
         self.g0 = 9.81 / (self.l_star / self.t_star**2)
         self.ang_corr = ang_corr
@@ -278,16 +278,17 @@ class ArpodCrtbp(gym.Env):
         print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
         # Dense reward RVD
-        reward = (1 / 25) * np.log(x_norm) ** 2
+        reward = (1 / 100) * np.log(x_norm) ** 2
         if rho > self.rho_max:
             reward += - 150
             self.done = True
         self.infos = {"Episode success": "approaching"}
         if rho <= self.safety_radius and rhodot <= self.safety_vel:
             self.infos = {"Episode success": "docked"}
+            print('Docked.')
 
         # Dense reward constraints
-        reward += self.is_outside(rho)
+        reward += self.is_outside3(rho)
 
         # Dense reward thrust optimization
         reward += - (1 / 100) * np.exp(T_norm / self.max_thrust) ** 2

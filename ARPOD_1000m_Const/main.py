@@ -5,6 +5,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
+from CallBack import CallBack
 
 # TRAINING
 # Data and initialization
@@ -12,13 +13,14 @@ m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
-dt = 1  # TODO: prova 0.5
-ToF = 599
+dt = 1
+ToF = 300
+batch_size = 64
 
-rho_max = 1500
-rhodot_max = 25
+rho_max = 2500
+rhodot_max = 50
 
-ang_corr = np.deg2rad(15)
+ang_corr = np.deg2rad(25)
 safety_radius = 1
 safety_vel = 0.1
 
@@ -40,7 +42,7 @@ x0t_state = np.array(
 x0r_state = np.array(
     [
         4.23387991e-11,
-        2.61552389e-06,
+        0.75 * 2.61552389e-06,
         -1.61122476e-10,
         3.34605533e-06,
         -1.43029505e-10,
@@ -54,7 +56,9 @@ x0_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            50 * np.ones(3) / l_star,
+            50 * np.ones(1) / l_star,
+            650 * np.ones(1) / l_star,
+            50 * np.ones(1) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
@@ -79,23 +83,24 @@ model = RecurrentPPO(
     "MlpLstmPolicy",
     env,
     verbose=1,
-    batch_size=2*32,
-    n_steps=2*19200,
+    batch_size=batch_size,
+    n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
     learning_rate=0.0001,  # OSS: ormai sono abbastanza sicuro con questi HP.
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
-    ent_coef=1e-4,
-    # policy_kwargs=dict(enable_critic_lstm=False, optimizer_kwargs=dict(weight_decay=1e-5)),
+    ent_coef=1e-3,
+    policy_kwargs=dict(n_lstm_layers=2),
     tensorboard_log="./tensorboard/"
 )
 
 print(model.policy)
 
 # Start learning
-model.learn(total_timesteps=5000000, progress_bar=True)
+call_back = CallBack(env)
+model.learn(total_timesteps=10000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)

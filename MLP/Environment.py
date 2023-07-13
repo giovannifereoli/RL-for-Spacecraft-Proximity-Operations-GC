@@ -242,7 +242,7 @@ class ArpodCrtbp(gym.Env):
 
         return (
             self.state,
-            reward,  # TODO: check self.state ovunque e costruzione ultimo stato
+            reward,
             self.done,
             self.infos,
         )
@@ -279,7 +279,7 @@ class ArpodCrtbp(gym.Env):
 
         # Dense reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
-        # if rho >= self.rho_max: # TODO: prova questo qua
+        # if rho >= self.rho_max:
         # self.done = True
         # reward += - 10
         self.infos = {"Episode success": "approaching"}

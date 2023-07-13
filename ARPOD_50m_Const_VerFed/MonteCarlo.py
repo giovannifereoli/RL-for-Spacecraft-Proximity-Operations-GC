@@ -12,18 +12,19 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 30
+ToF = 200
+batch_size = 64
 
 rho_max = 100
 rhodot_max = 6
 
-ang_corr = np.deg2rad(15)
+ang_corr = np.deg2rad(25)
 safety_radius = 1
 safety_vel = 0.1
 
 max_thrust = 29620
 mass = 21000
-state_space = 14
+state_space = 16
 actions_space = 3
 
 x0t_state = np.array(
@@ -67,8 +68,8 @@ env = ArpodCrtbp(
     dt=dt,
     rho_max=rho_max,
     rhodot_max=rhodot_max,
-    x0=x0_vec,
-    x0_std=x0_std_vec,
+    x0ivp=x0_vec,
+    x0ivp_std=x0_std_vec,
     ang_corr=ang_corr,
     safety_radius=safety_radius,
     safety_vel=safety_vel,
@@ -78,15 +79,15 @@ model = RecurrentPPO(
     "MlpLstmPolicy",
     env,
     verbose=1,
-    batch_size=2 * 32,
-    n_steps=2 * 1920,
+    batch_size=batch_size,
+    n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.0001,
+    learning_rate=0.00005,
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
-    ent_coef=1e-4,
+    ent_coef=1e-3,
     tensorboard_log="./tensorboard/",
 )
 print(model.policy)
@@ -96,7 +97,7 @@ print(model.policy)
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrentDense")
+model = RecurrentPPO.load("ppo_recurrent")
 
 # Trajectory propagation
 num_episode_MCM = 200

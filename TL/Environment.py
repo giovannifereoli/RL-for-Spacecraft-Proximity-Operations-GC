@@ -279,7 +279,7 @@ class ArpodCrtbp(gym.Env):
 
         # Dense reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
-        if rho >= self.rho_max:
+        if rho >= self.rho_max:  # TODO: QUA QUESTO NON SERVE!!
             self.done = True
             reward += - 150
         self.infos = {"Episode success": "approaching"}

@@ -285,6 +285,7 @@ class ArpodCrtbp(gym.Env):
         self.infos = {"Episode success": "approaching"}
         if rho <= self.safety_radius and rhodot <= self.safety_vel:
             self.infos = {"Episode success": "docked"}
+            print('Docked.')
 
         # Dense reward constraints
         reward += self.is_outside(rho)

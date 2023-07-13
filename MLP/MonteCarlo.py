@@ -144,7 +144,7 @@ for num_ep in range(num_episode_MCM):
         obs_mean = np.mean([obs_mean, obs_vec], axis=0)
         obs_std = np.std(
             [obs_mean + obs_std, obs_mean - obs_std, obs_vec], axis=0
-        )  # TODO: check questi conti
+        )
 
 
 # Re-scaling and other Statistics
