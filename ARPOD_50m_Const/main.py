@@ -1,7 +1,7 @@
 # Import libraries
 import numpy as np
 from sb3_contrib import RecurrentPPO
-from stable_baselines3.common.evaluation import evaluate_policy
+# from stable_baselines3.common.evaluation import evaluate_policy
 from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
@@ -256,10 +256,10 @@ Tb_ver = np.array([1, 0, 0])
 for i in range(len(w_ang) - 1):  # OSS: T aligned with x-axis body-frame assumptions.
     wy = dTdt_ver[i, 2] / Tb_ver[0]
     wz = - dTdt_ver[i, 1] / Tb_ver[0]
-    w_ang[i + 1] = np.rad2deg(np.linalg.norm(np.array([0, wy, wz])))
+    w_ang[i + 1] = np.linalg.norm(np.array([0, wy, wz]))
 plt.close()  # Initialize
 plt.figure()
-plt.plot(t, w_ang, c="c", linewidth=2)
+plt.plot(t[1:-1], np.rad2deg(w_ang[1:-1]), c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")

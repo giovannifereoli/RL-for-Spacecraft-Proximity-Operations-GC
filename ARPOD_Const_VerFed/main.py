@@ -17,10 +17,10 @@ dt = 0.5
 ToF = 200
 batch_size = 64
 
-rho_max = 100
+rho_max = 60
 rhodot_max = 6
 
-ang_corr = np.deg2rad(25)
+ang_corr = np.deg2rad(15)
 safety_radius = 1
 safety_vel = 0.1
 
@@ -56,7 +56,7 @@ x0ivp_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            2.5 * np.ones(3) / l_star,
+            5 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
@@ -84,13 +84,14 @@ model = RecurrentPPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.00005,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
+    learning_rate=0.0001,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
-    ent_coef=1e-3,
-    # policy_kwargs=dict(enable_critic_lstm=False, optimizer_kwargs=dict(weight_decay=1e-5)),
+    ent_coef=1e-4,
+    policy_kwargs=dict(n_lstm_layers=2),
+    # policy_kwargs=dict(enable_critic_lstm=False, n_lstm_layers=2, optimizer_kwargs=dict(weight_decay=1e-5)),
     tensorboard_log="./tensorboard/"
 )
 
@@ -192,7 +193,7 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 # ax.set_aspect("auto")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\Trajectory.pdf")  # Save
+plt.savefig("plots\Trajectory1.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -201,7 +202,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\Velocity.pdf")  # Save
+plt.savefig("plots\Velocity1.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -210,7 +211,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\Position.pdf")  # Save
+plt.savefig("plots\Position1.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -219,7 +220,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\Mass.pdf")  # Save
+plt.savefig("plots\Mass1.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -247,7 +248,7 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\Thrust.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\Thrust1.pdf", bbox_inches="tight")  # Save
 
 # Plot angular velocity
 dTdt_ver = np.zeros([len(t), 3])
@@ -261,11 +262,11 @@ for i in range(len(w_ang) - 1):  # OSS: T aligned with x-axis body-frame assumpt
     w_ang[i + 1] = np.rad2deg(np.linalg.norm(np.array([0, wy, wz])))
 plt.close()  # Initialize
 plt.figure()
-plt.plot(t, w_ang, c="c", linewidth=2)
+plt.plot(t[1:-1], w_ang[1:-1], c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVel.pdf")  # Save
+plt.savefig("plots\AngVel1.pdf")  # Save
 # TODO: il primo punto è sbagliato, sarà già in quella direzione
 
 

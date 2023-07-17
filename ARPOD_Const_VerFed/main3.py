@@ -14,39 +14,39 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200
+ToF = 700
 batch_size = 64
 
-rho_max = 400
-rhodot_max = 20
+rho_max = 1300
+rhodot_max = 50
 
-ang_corr = np.deg2rad(25)
+ang_corr = np.deg2rad(15)
 safety_radius = 1
 safety_vel = 0.1
 
 max_thrust = 29620
 mass = 21000
 state_space = 16
-actions_space = 3  # TODO: Qua potrei incrementare peso su constraint
+actions_space = 3
 
 x0t_state = np.array(
     [
         1.02206694e00,
-        -5.25240280e-07,
+        -2.61552389e-06,
         -1.82100000e-01,
-        -6.71943026e-07,
+        -3.34605533e-06,
         -1.03353155e-01,
-        2.55711651e-06,
+        1.27335994e-05,
     ]
-)  # 9:2 NRO - 200m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
+)  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
     [
-        1.70730097e-12,
-        5.25240280e-07,
-        -6.49763576e-12,
-        6.71943026e-07,
-        -5.76798331e-12,
-        -2.55711651e-06,
+        4.23387991e-11,
+        2.61552389e-06,
+        -1.61122476e-10,
+        3.34605533e-06,
+        -1.43029505e-10,
+        -1.27335994e-05,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -56,10 +56,10 @@ x0ivp_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            10 * np.ones(3) / l_star,
+            100 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
-            np.zeros(1),
+            np.zeros(1)
         )
     )
 )
@@ -74,32 +74,43 @@ env = ArpodCrtbp(
     x0ivp_std=x0ivp_std_vec,
     ang_corr=ang_corr,
     safety_radius=safety_radius,
-    safety_vel=safety_vel,
+    safety_vel=safety_vel
+)
+check_env(env)
+model = RecurrentPPO(
+    "MlpLstmPolicy",
+    env,
+    verbose=1,
+    batch_size=batch_size,
+    n_steps=int(batch_size * ToF / dt),
+    n_epochs=10,
+    learning_rate=0.0001,  # OSS: ormai sono abbastanza sicuro con questi HP.
+    gamma=0.99,
+    gae_lambda=1,
+    clip_range=0.1,
+    max_grad_norm=0.1,  # TODO: riprova TL qua
+    ent_coef=1e-4,
+    policy_kwargs=dict(n_lstm_layers=2),
+    tensorboard_log="./tensorboard/"
 )
 
-# Start learning
-model = RecurrentPPO.load(
-    "ppo_recurrent2",
-    print_system_info=True,
-    custom_objects={"learning_rate": 1e-5, "ent_coeff": 0},
-)  # tensorboard_log="some_name"
-check_env(env)
 print(model.policy)
-model.set_env(env)
+
+# Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=5000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=10000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_recurrent200")
+model.save("ppo_recurrent3")
 
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent200")
+model = RecurrentPPO.load("ppo_recurrent3")
 obs = env.reset()
 
 # Trajectory propagation
@@ -181,7 +192,7 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 # ax.set_aspect("auto")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\Trajectory.pdf")  # Save
+plt.savefig("plots\Trajectory3.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -190,7 +201,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\Velocity.pdf")  # Save
+plt.savefig("plots\Velocity3.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -199,7 +210,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\Position.pdf")  # Save
+plt.savefig("plots\Position3.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -208,7 +219,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\Mass.pdf")  # Save
+plt.savefig("plots\Mass3.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -236,23 +247,5 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\Thrust.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\Thrust3.pdf", bbox_inches="tight")  # Save
 
-# Plot angular velocity
-dTdt_ver = np.zeros([len(t), 3])
-w_ang = np.zeros(len(t))
-w_ang[0] = np.nan
-dTdt_ver = np.diff(thrust / np.linalg.norm(thrust), axis=0) / dt  # Finite difference
-Tb_ver = np.array([1, 0, 0])
-for i in range(len(w_ang) - 1):  # OSS: T aligned with x-axis body-frame assumptions.
-    wy = dTdt_ver[i, 2] / Tb_ver[0]
-    wz = -dTdt_ver[i, 1] / Tb_ver[0]
-    w_ang[i + 1] = np.rad2deg(np.linalg.norm(np.array([0, wy, wz])))
-plt.close()  # Initialize
-plt.figure()
-plt.plot(t, w_ang, c="c", linewidth=2)
-plt.grid(True)
-plt.xlabel("Time [s]")
-plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVel.pdf")  # Save
-# TODO: il primo punto è sbagliato, sarà già in quella direzione
