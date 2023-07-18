@@ -1,6 +1,6 @@
 # Import libraries
 import numpy as np
-from sb3_contrib import RecurrentPPO
+from stable_baselines3 import PPO
 from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
@@ -12,9 +12,10 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 30
+ToF = 200
+batch_size = 64
 
-rho_max = 100
+rho_max = 60
 rhodot_max = 6
 
 ang_corr = np.deg2rad(15)
@@ -23,40 +24,40 @@ safety_vel = 0.1
 
 max_thrust = 29620
 mass = 21000
-state_space = 14
+state_space = 16
 actions_space = 3
 
 x0t_state = np.array(
     [
         1.02206694e00,
-        -1.33935003e-07,
+        -1.32282592e-07,
         -1.82100000e-01,
-        -1.71343849e-07,
+        -1.69229909e-07,
         -1.03353155e-01,
-        6.52058535e-07,
+        6.44013821e-07
     ]
 )  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
     [
-        1.11022302e-13,
-        1.33935003e-07,
-        -4.22495372e-13,
-        1.71343849e-07,
-        -3.75061093e-13,
-        -6.52058535e-07,
+        1.08357767e-13,
+        1.32282592e-07,
+        -4.12142542e-13,
+        1.69229909e-07,
+        -3.65860120e-13,
+        -6.44013821e-07
     ]
 )
 x0r_mass = np.array([mass / m_star])
 x0_time_rem = np.array([ToF / t_star])
-x0_vec = np.concatenate((x0t_state, x0r_state, x0r_mass, x0_time_rem))
-x0_std_vec = np.absolute(
+x0ivp_vec = np.concatenate((x0t_state, x0r_state, x0r_mass, x0_time_rem))
+x0ivp_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
             2.5 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
-            np.zeros(1),
+            np.zeros(1)
         )
     )
 )
@@ -67,19 +68,19 @@ env = ArpodCrtbp(
     dt=dt,
     rho_max=rho_max,
     rhodot_max=rhodot_max,
-    x0=x0_vec,
-    x0_std=x0_std_vec,
+    x0ivp=x0ivp_vec,
+    x0ivp_std=x0ivp_std_vec,
     ang_corr=ang_corr,
     safety_radius=safety_radius,
-    safety_vel=safety_vel,
+    safety_vel=safety_vel
 )
 check_env(env)
-model = RecurrentPPO(
-    "MlpLstmPolicy",
+model = PPO(
+    "MlpPolicy",
     env,
     verbose=1,
-    batch_size=2 * 32,
-    n_steps=2 * 1920,
+    batch_size=batch_size,
+    n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
     learning_rate=0.0001,
     gamma=0.99,
@@ -96,12 +97,11 @@ print(model.policy)
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrentDense")
+model = PPO.load("ppo_mlp")
 
 # Trajectory propagation
 num_episode_MCM = 200
 num_ep = 0
-collided = np.zeros(num_episode_MCM)
 docked = np.zeros(num_episode_MCM)
 obs_mean = np.array([])
 obs_std = np.array([])
@@ -116,17 +116,13 @@ for num_ep in range(num_episode_MCM):
     # Propagation
     while True:
         # Action sampling and propagation
-        action, lstm_states = model.predict(
-            obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
+        action, _states = model.predict(
+            obs, deterministic=True
         )  # OSS: Episode start signals are used to reset the lstm states
         obs, rewards, done, info = env.step(action)
 
         # Saving
         obs_vec = np.vstack((obs_vec, env.scaler_reverse_observation(obs)))
-
-        # Check collision (OSS: it happens during motion)
-        if info.get("Episode success") == "collided":
-            collided[num_ep] = 1
 
         # Stop
         if done:
@@ -152,7 +148,6 @@ obs_mean[:, 6:9] = obs_mean[:, 6:9] * l_star
 obs_mean[:, 9:12] = obs_mean[:, 9:12] * l_star / t_star
 obs_std[:, 6:9] = obs_std[:, 6:9] * l_star
 obs_std[:, 9:12] = obs_std[:, 9:12] * l_star / t_star
-prob_collision = collided.sum() * 100 / num_episode_MCM
 prob_RVD = docked.sum() * 100 / num_episode_MCM
 
 # Approach Corridor: truncated cone + cylinder
@@ -214,10 +209,9 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.view_init(elev=0, azim=0)
 ax.set_title(
-    "RVD probability: %.1f %% - Collision probability: %.1f %% \n Mean Final State: [%.3f m, %.3f m/s]"
+    "RVD probability: %.1f %% \n Mean Final State: [%.3f m, %.3f m/s]"
     % (
         prob_RVD,
-        prob_collision,
         np.linalg.norm(obs_mean[-1, 6:9]),
         np.linalg.norm(obs_mean[-1, 9:12]),
     ),

@@ -96,7 +96,7 @@ model = RecurrentPPO(
 print(model.policy)
 
 # Start learning
-# model.learn(total_timesteps=3000000, progress_bar=True)  # TODO: rifletti piu sul sgnificato di metaRL e come metterlo alla prova
+# model.learn(total_timesteps=3000000, progress_bar=True)
 
 # Evaluation and saving
 # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -264,7 +264,5 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
 plt.savefig("plots\AngVel.pdf")  # Save
-
-# TODO: pensa a questo un pochino, puoi risolvere?
 
 

@@ -102,7 +102,6 @@ model = RecurrentPPO.load("ppo_recurrent")
 # Trajectory propagation
 num_episode_MCM = 200
 num_ep = 0
-collided = np.zeros(num_episode_MCM)
 docked = np.zeros(num_episode_MCM)
 obs_mean = np.array([])
 obs_std = np.array([])
@@ -124,10 +123,6 @@ for num_ep in range(num_episode_MCM):
 
         # Saving
         obs_vec = np.vstack((obs_vec, env.scaler_reverse_observation(obs)))
-
-        # Check collision (OSS: it happens during motion)
-        if info.get("Episode success") == "collided":
-            collided[num_ep] = 1
 
         # Stop
         if done:
@@ -153,7 +148,6 @@ obs_mean[:, 6:9] = obs_mean[:, 6:9] * l_star
 obs_mean[:, 9:12] = obs_mean[:, 9:12] * l_star / t_star
 obs_std[:, 6:9] = obs_std[:, 6:9] * l_star
 obs_std[:, 9:12] = obs_std[:, 9:12] * l_star / t_star
-prob_collision = collided.sum() * 100 / num_episode_MCM
 prob_RVD = docked.sum() * 100 / num_episode_MCM
 
 # Approach Corridor: truncated cone + cylinder
@@ -215,10 +209,9 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.view_init(elev=0, azim=0)
 ax.set_title(
-    "RVD probability: %.1f %% - Collision probability: %.1f %% \n Mean Final State: [%.3f m, %.3f m/s]"
+    "RVD probability: %.1f %% \n Mean Final State: [%.3f m, %.3f m/s]"
     % (
         prob_RVD,
-        prob_collision,
         np.linalg.norm(obs_mean[-1, 6:9]),
         np.linalg.norm(obs_mean[-1, 9:12]),
     ),

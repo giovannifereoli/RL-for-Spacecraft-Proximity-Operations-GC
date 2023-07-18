@@ -20,7 +20,7 @@ batch_size = 64
 rho_max = 60
 rhodot_max = 6
 
-ang_corr = np.deg2rad(15)
+ang_corr = np.deg2rad(20)
 safety_radius = 1
 safety_vel = 0.1
 
@@ -84,22 +84,21 @@ model = RecurrentPPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.0001,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
+    learning_rate=0.00001,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-4,
-    policy_kwargs=dict(n_lstm_layers=2),
     # policy_kwargs=dict(enable_critic_lstm=False, n_lstm_layers=2, optimizer_kwargs=dict(weight_decay=1e-5)),
     tensorboard_log="./tensorboard/"
 )
 
-print(model.policy)  # TODO: perchè la traiettoria sembra 'disassata'?????
+print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=5000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=6000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -267,7 +266,10 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
 plt.savefig("plots\AngVel1.pdf")  # Save
+
 # TODO: il primo punto è sbagliato, sarà già in quella direzione
+# TODO: c'è consistenza con calcoli in envinroment?
+
 
 
 

@@ -1,4 +1,5 @@
 # Import libraries
+import random
 import gym
 from gym import spaces
 import numpy as np
@@ -8,16 +9,16 @@ from scipy.integrate import solve_ivp
 class ArpodCrtbp(gym.Env):
     # Initialize class
     def __init__(
-            self,
-            max_time=1,
-            dt=1,
-            rho_max=1,
-            rhodot_max=1,
-            x0=np.zeros(13),
-            x0_std=np.zeros(13),
-            ang_corr=np.rad2deg(15),
-            safety_radius=1,
-            safety_vel=0.1
+        self,
+        max_time=1,
+        dt=1,
+        rho_max=1,
+        rhodot_max=1,
+        x0ivp=np.zeros(13),
+        x0ivp_std=np.zeros(13),
+        ang_corr=np.rad2deg(15),
+        safety_radius=1,
+        safety_vel=0.1,
     ):
         super(ArpodCrtbp, self).__init__()
         # DATA
@@ -28,9 +29,9 @@ class ArpodCrtbp(gym.Env):
         self.time = 0
         self.max_time = max_time / self.t_star
         self.dt = dt / self.t_star
-        self.max_thrust = 29620 / (self.m_star * self.l_star / self.t_star ** 2)
+        self.max_thrust = 29620 / (self.m_star * self.l_star / self.t_star**2)
         self.spec_impulse = 310 / self.t_star
-        self.g0 = 9.81 / (self.l_star / self.t_star ** 2)
+        self.g0 = 9.81 / (self.l_star / self.t_star**2)
         self.ang_corr = ang_corr
         self.safety_radius = safety_radius
         self.safety_vel = safety_vel
@@ -39,11 +40,18 @@ class ArpodCrtbp(gym.Env):
         self.rhodot_max = rhodot_max
         self.infos = {"Episode success": "lost"}
         self.done = False
+        self.Told = np.zeros(3)
+        self.randomc = random.choice([1, 2, 3, 4])
+        self.randomT = np.ones(3)
+        self.failure = 0.5
+        self.dyn_uncertainty = 1e-10  # OSS: 1e-6 / mass  [adim]
+        if self.randomc != 4:
+            self.randomT[self.randomc - 1] = self.failure
 
         # STATE AND ACTION SPACES
         self.action_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
         self.observation_space = spaces.Box(
-            low=-1.25, high=+1.25, shape=(14,), dtype=np.float64
+            low=-1.25, high=+1.25, shape=(16,), dtype=np.float64
         )
 
         # SCALERS
@@ -62,8 +70,10 @@ class ArpodCrtbp(gym.Env):
                 -self.rhodot_max / (self.l_star / self.t_star),
                 -self.rhodot_max / (self.l_star / self.t_star),
                 -self.rhodot_max / (self.l_star / self.t_star),
-                1.2 * x0[-2],
-                0
+                1.2 * x0ivp[-2],
+                0,
+                -self.max_thrust,
+                -200,
             ]
         ).flatten()
         self.max = np.array(
@@ -80,14 +90,31 @@ class ArpodCrtbp(gym.Env):
                 self.rhodot_max / (self.l_star / self.t_star),
                 self.rhodot_max / (self.l_star / self.t_star),
                 self.rhodot_max / (self.l_star / self.t_star),
-                0.8 * x0[-2],
-                self.max_time
+                0.8 * x0ivp[-2],  # OSS: empirically determined
+                self.max_time,
+                self.max_thrust,
+                200,  # OSS: empirically determined
             ]
         ).flatten()
 
         # INITIAL CONDITIONS
-        self.state0 = x0
-        self.state0_std = x0_std
+        print("Initialization")
+        # Part 1: get Initial Reward
+        self.state0 = np.concatenate(
+            [x0ivp, np.array([0, 0])]
+        )  # Adding T and R initial states
+        self.state0_std = np.concatenate(
+            [x0ivp_std, np.array([0, 0])]
+        )  # OSS: no std for T and R
+        self.state = np.random.normal(
+            self.state0, self.state0_std
+        )  # OSS: not normalized as first step
+        self.reward_old = self.get_reward(
+            np.array([0, 0, 0]))  # OSS: Reward t-1 without action
+
+        # Part 2: get Initial State
+        self.state0 = np.concatenate([x0ivp, np.array([0, self.reward_old])])
+        self.state0_std = np.concatenate([x0ivp_std, np.array([0, 0])])
         self.state = self.scaler_apply_observation(
             np.random.normal(self.state0, self.state0_std)
         )
@@ -97,12 +124,12 @@ class ArpodCrtbp(gym.Env):
     def step(self, action):
         # RELATIVE CRT3BP
         def rel_crtbp(
-                t,
-                x,
-                T,
-                mu=0.012150583925359,
-                spec_impulse=310 / self.t_star,
-                g0=9.81 / (self.l_star / self.t_star ** 2),
+            t,
+            x,
+            T,
+            mu=0.012150583925359,
+            spec_impulse=310 / self.t_star,
+            g0=9.81 / (self.l_star / self.t_star**2),
         ):
             """
                         Circular Restricted Three-Body Problem Dynamics
@@ -118,6 +145,7 @@ class ArpodCrtbp(gym.Env):
 
             # Initialize ODE
             dxdt = np.zeros((13,))
+            std = self.dyn_uncertainty
             # Initialize Target State
             xt = x[0]
             yt = x[1]
@@ -143,8 +171,8 @@ class ArpodCrtbp(gym.Env):
             # Relative CRTBP Dynamics
             r1t = [xt + mu, yt, zt]
             r2t = [xt + mu - 1, yt, zt]
-            r1t_norm = np.sqrt((xt + mu) ** 2 + yt ** 2 + zt ** 2)
-            r2t_norm = np.sqrt((xt + mu - 1) ** 2 + yt ** 2 + zt ** 2) + t * 0
+            r1t_norm = np.sqrt((xt + mu) ** 2 + yt**2 + zt**2)
+            r2t_norm = np.sqrt((xt + mu - 1) ** 2 + yt**2 + zt**2) + t * 0
             rho = [xr, yr, zr]
 
             # Target Equations
@@ -152,74 +180,76 @@ class ArpodCrtbp(gym.Env):
             dxdt[3:6] = [
                 2 * ytdot
                 + xt
-                - (1 - mu) * (xt + mu) / r1t_norm ** 3
-                - mu * (xt + mu - 1) / r2t_norm ** 3,
+                - (1 - mu) * (xt + mu) / r1t_norm**3
+                - mu * (xt + mu - 1) / r2t_norm**3,
                 -2 * xtdot
                 + yt
-                - (1 - mu) * yt / r1t_norm ** 3
-                - mu * yt / r2t_norm ** 3,
-                -(1 - mu) * zt / r1t_norm ** 3 - mu * zt / r2t_norm ** 3,
+                - (1 - mu) * yt / r1t_norm**3
+                - mu * yt / r2t_norm**3,
+                -(1 - mu) * zt / r1t_norm**3 - mu * zt / r2t_norm**3,
             ]
 
-            # Chaser equations
+            # Chaser relative equations
             dxdt[6:9] = [xrdot, yrdot, zrdot]
             dxdt[9:12] = [
                 2 * yrdot
                 + xr
                 + (1 - mu)
                 * (
-                        (xt + mu) / r1t_norm ** 3
-                        - (xt + xr + mu) / np.linalg.norm(np.add(r1t, rho)) ** 3
+                    (xt + mu) / r1t_norm**3
+                    - (xt + xr + mu) / np.linalg.norm(np.add(r1t, rho)) ** 3
                 )
                 + mu
                 * (
-                        (xt + mu - 1) / r2t_norm ** 3
-                        - (xt + xr + mu - 1) / np.linalg.norm(np.add(r2t, rho)) ** 3
+                    (xt + mu - 1) / r2t_norm**3
+                    - (xt + xr + mu - 1) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
-                + Tx / m,
+                + Tx / m
+                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
                 -2 * xrdot
                 + yr
                 + (1 - mu)
                 * (
-                        yt / r1t_norm ** 3
-                        - (yt + yr) / np.linalg.norm(np.add(r1t, rho)) ** 3
+                    yt / r1t_norm**3
+                    - (yt + yr) / np.linalg.norm(np.add(r1t, rho)) ** 3
                 )
                 + mu
                 * (
-                        yt / r2t_norm ** 3
-                        - (yt + yr) / np.linalg.norm(np.add(r2t, rho)) ** 3
+                    yt / r2t_norm**3
+                    - (yt + yr) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
-                + Ty / m,
+                + Ty / m
+                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
                 (1 - mu)
                 * (
-                        zt / r1t_norm ** 3
-                        - (zt + zr) / np.linalg.norm(np.add(r1t, rho)) ** 3
+                    zt / r1t_norm**3
+                    - (zt + zr) / np.linalg.norm(np.add(r1t, rho)) ** 3
                 )
                 + mu
                 * (
-                        zt / r2t_norm ** 3
-                        - (zt + zr) / np.linalg.norm(np.add(r2t, rho)) ** 3
+                    zt / r2t_norm**3
+                    - (zt + zr) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
-                + Tz / m,
+                + Tz / m
+                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
             ]
             dxdt[12] = -T_norm / (spec_impulse * g0)
 
             return dxdt
 
         # ACTUATION CONTROL
-        # Thrust action
-        T = self.scaler_reverse_action(action)
+        # Thrust action with 50% failure in a random direction
+        T = self.scaler_reverse_action(action) * self.randomT  # Actions t-1
 
         # EQUATIONS OF MOTION
         # Initialization
         x0 = self.scaler_reverse_observation(obs_scaled=self.state).flatten()
-        x0 = x0[0:-1]
 
         # Integration
         sol = solve_ivp(
             fun=rel_crtbp,
             t_span=(0, self.dt),
-            y0=x0,
+            y0=x0[0:-3],  # x0 IVP != x0 MDP
             t_eval=[self.dt],
             method="LSODA",
             rtol=2.220446049250313e-14,
@@ -227,14 +257,23 @@ class ArpodCrtbp(gym.Env):
             args=(T, self.mu, self.spec_impulse, self.g0),  # OSS: it shall be a tuple
         )
         self.time += self.dt
+
+        # Definition of complete MDP state from IVP state
         self.state = np.transpose(sol.y).flatten()
         self.state = np.append(self.state, self.max_time - self.time)
+        self.state = np.append(self.state, np.linalg.norm(T))
+        self.state = np.append(
+            self.state, self.reward_old
+        )  # OSS: reward of previous time-step
 
         # REWARD
-        reward = self.get_reward(T)
+        reward = self.get_reward(T)  # Reward t due to observations/actions t-1
+        self.reward_old = reward  # OSS: update, it has already been inserted in state
 
         # Time constraint
         if self.time >= self.max_time:
+            self.infos = {"Episode success": "time finished"}
+            print("Time finished.")
             self.done = True
 
         # Return scaled state
@@ -249,55 +288,112 @@ class ArpodCrtbp(gym.Env):
 
     # Reset between episodes
     def reset(self):
-        # Set initial conditions (OSS: already normalized)
-        print("New initial condition")
-        self.state = self.scaler_apply_observation(
-            np.random.normal(self.state0, self.state0_std).flatten()
-        )
+        # Random thrust failure
+        self.randomc = random.choice([1, 2, 3, 4])
+        self.randomT = np.ones(3)
+        if self.randomc != 4:
+            self.randomT[self.randomc - 1] = self.failure
 
         # Miscellaneous
         self.infos = {"Episode success": "lost"}
         self.done = False
         self.time = 0
 
+        # Set initial conditions (OSS: already normalized)
+        print("New initial condition")
+        self.state = np.random.normal(self.state0, self.state0_std).flatten()
+        self.reward_old = self.get_reward(np.array([0, 0, 0]))
+        self.state = self.scaler_apply_observation(self.state)
+
         return self.state
 
     def get_reward(self, T):
         # Useful data
+        xrel_new = self.state[6:-4]
         x_norm = np.linalg.norm(
             np.array(
                 [
-                    self.state[6:9] * self.l_star / self.rho_max,
-                    self.state[9:12] * self.l_star / (self.t_star * self.rhodot_max),
+                    xrel_new[0:3] * self.l_star / self.rho_max,
+                    xrel_new[3:6] * self.l_star / (self.t_star * self.rhodot_max),
                 ]
             )
         ) / np.linalg.norm(np.array([1, 1, 1, 1, 1, 1]))
-        rho = np.linalg.norm(self.state[6:9]) * self.l_star
-        rhodot = np.linalg.norm(self.state[9:12]) * self.l_star / self.t_star
-        T_norm = np.linalg.norm(T)  # OSS: not-scaled, already fine with self.max_thrust!
+        rho = np.linalg.norm(xrel_new[0:3]) * self.l_star
+        rhodot = np.linalg.norm(xrel_new[3:6]) * self.l_star / self.t_star
         print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
-        # Dense reward RVD
+        # Dense/Episodic reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
-        # if rho >= self.rho_max:
-        # self.done = True
-        # reward += - 10
         self.infos = {"Episode success": "approaching"}
-        if rho <= self.safety_radius and rhodot <= self.safety_vel:
+        if rho >= self.rho_max:   # OSS: no backward motion
+            self.infos = {"Episode success": "lost"}
+            print("Lost.")
+            reward += -30
+            self.done = True
+        if rho <= self.safety_radius and rhodot <= self.safety_vel:  # OSS: perfect dock
             self.infos = {"Episode success": "docked"}
-
-        # Dense reward constraints
-        reward += self.is_outside(rho)
+            print("Docked.")
+            reward += 100
+            self.done = True
 
         # Dense reward thrust optimization
-        reward += - (1 / 100) * np.exp(T_norm / self.max_thrust) ** 2
+        reward += - (1 / 100) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2
+
+        # Dense/Episodic reward constraints
+        reward += self.corridor_const(rho, xrel_new)
+        reward += self.attitude_const(T)
+
+        # Scaling reward
+        reward = reward / 50
 
         return reward
+
+    def corridor_const(self, rho, xrel_new):
+        # Initialization
+        pos_vec = xrel_new[0:3] * self.l_star
+        cone_vec = np.array([0, 1, 0])
+        ang = np.arccos(np.dot(pos_vec, cone_vec) / rho)
+        len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
+        const_signal = -np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(
+            self.ang_corr
+        )
+
+        # Computation reward w.r.t. angle
+        reward_cons = - (1 / 10) * np.exp(ang / (2 * np.pi)) ** 2
+
+        # Computation collision
+        if const_signal > 0:  # and rho > 1.5:  # OSS: if B*x>0 constraint violated
+            self.infos = {"Episode success": "collided"}
+            print("Collision.")
+            reward_cons += -30
+            self.done = True
+
+        return reward_cons
+
+    def attitude_const(self, Tnew):
+        # Angular velocity
+        Tnew_dir = Tnew / (np.linalg.norm(Tnew) + 1e-36)
+        Told_dir = self.Told / (np.linalg.norm(self.Told) + 1e-36)
+        dTdt_ver = (Tnew_dir - Told_dir) / (self.dt * self.l_star)  # Finite differences
+        w_ang = np.linalg.norm(np.array([0, dTdt_ver[2], - dTdt_ver[1]]))
+
+        # Dense reward attitude control
+        reward_w = - (1 / 10) * np.exp(w_ang / (2 * np.pi)) ** 2
+        if w_ang > np.deg2rad(10):
+            self.infos = {"Episode success": "fast rotation"}
+            print("Fast rotation.")
+            reward_w += 10
+            self.done = True
+
+        # Update Told
+        self.Told = Tnew
+
+        return reward_w
 
     # Re-scale action from policy net
     def scaler_reverse_action(self, action):
         action_notscaled = (
-                self.max_thrust * action / np.linalg.norm(np.array([1, 1, 1]))
+            self.max_thrust * action / np.linalg.norm(np.array([1, 1, 1]))
         )
         return action_notscaled
 
@@ -310,67 +406,6 @@ class ArpodCrtbp(gym.Env):
     def scaler_reverse_observation(self, obs_scaled):
         obs = ((1 + obs_scaled) * (self.max - self.min)) / 2 + self.min
         return obs
-
-    def is_outside(self, rho):
-        # Initialization (matrix for +y-axis approach corridor)
-        pos_vec = self.state[6:9] * self.l_star
-        cone_vec = np.array([0, 1, 0])
-        len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
-        const = - np.dot(pos_vec, cone_vec) + rho * np.cos(
-            self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
-        const2 = - np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(self.ang_corr)
-
-        # Computation collision (OSS: cone for reward != cone for collision signal)
-        # Truncated cone
-        if const2 > 0:  # OSS: just a signal
-            self.infos = {"Episode success": "collided"}
-            print("Collision.")
-
-        # Computation reward (OSS: if B*x>0 constraint violated)
-        reward_cons = - (1 / 10) * np.exp(0.5 * const / self.rho_max) ** 2
-
-        return reward_cons
-
-    def is_outside2(self, rho):
-        # Initialization (matrix for +y-axis approach corridor)
-        pos_vec = self.state[6:9] * self.l_star
-        cone_vec = np.array([0, 1, 0])
-        len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
-        const = - np.dot(pos_vec, cone_vec) + rho * np.cos(
-            self.ang_corr)  # OSS: inside [rho (cos-1), rho(cos)]= rho[-0.03, 0.96]
-        const2 = - np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(self.ang_corr)
-        reward_cons = 0
-
-        # Computation collision signal
-        # Truncated cone
-        if const2 > 0:
-            self.infos = {"Episode success": "collided"}
-            print("Collision.")
-
-        # Computation collision reward
-        # Cone (OSS: if B*x>0 constraint violated)
-        if const > 0:
-            reward_cons = - (1 / 4) * np.exp(const / self.rho_max) ** 2
-
-        return reward_cons
-
-    def is_outside3(self, rho):
-        # Initialization (matrix for +y-axis approach corridor)
-        pos_vec = self.state[6:9] * self.l_star
-        cone_vec = np.array([0, 1, 0])
-        ang = np.arccos(np.dot(pos_vec, cone_vec) / rho)
-        len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
-        const2 = - np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(self.ang_corr)
-
-        # Computation collision
-        if const2 > 0:  # and rho > 1.5:  # OSS: if B*x>0 constraint violated
-            self.infos = {"Episode success": "collided"}
-            print("Collision.")
-
-        # Computation reward w.r.t. angle
-        reward_cons = - (1 / 10) * np.exp(ang / (2 * np.pi)) ** 2
-
-        return reward_cons
 
     def render(self, mode="human"):
         pass

@@ -5,6 +5,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
+from CallBack import CallBack
 
 # TRAINING
 # Data and initialization
@@ -16,16 +17,16 @@ dt = 0.5
 ToF = 200
 batch_size = 64
 
-rho_max = 100
+rho_max = 60
 rhodot_max = 6
 
-ang_corr = np.deg2rad(15)
+ang_corr = np.deg2rad(20)
 safety_radius = 1
 safety_vel = 0.1
 
 max_thrust = 29620
 mass = 21000
-state_space = 14
+state_space = 16
 actions_space = 3
 
 x0t_state = np.array(
@@ -50,12 +51,12 @@ x0r_state = np.array(
 )
 x0r_mass = np.array([mass / m_star])
 x0_time_rem = np.array([ToF / t_star])
-x0_vec = np.concatenate((x0t_state, x0r_state, x0r_mass, x0_time_rem))
-x0_std_vec = np.absolute(
+x0ivp_vec = np.concatenate((x0t_state, x0r_state, x0r_mass, x0_time_rem))
+x0ivp_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            2.5 * np.ones(3) / l_star,
+            5 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
@@ -69,8 +70,8 @@ env = ArpodCrtbp(
     dt=dt,
     rho_max=rho_max,
     rhodot_max=rhodot_max,
-    x0=x0_vec,
-    x0_std=x0_std_vec,
+    x0ivp=x0ivp_vec,
+    x0ivp_std=x0ivp_std_vec,
     ang_corr=ang_corr,
     safety_radius=safety_radius,
     safety_vel=safety_vel
@@ -83,20 +84,20 @@ model = PPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.0001,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
+    learning_rate=0.00001,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-4,
-    # policy_kwargs=dict(enable_critic_lstm=False, optimizer_kwargs=dict(weight_decay=1e-5)),
     tensorboard_log="./tensorboard/"
 )
 
 print(model.policy)
 
 # Start learning
-model.learn(total_timesteps=3000000, progress_bar=True)
+call_back = CallBack(env)
+model.learn(total_timesteps=5000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -118,8 +119,7 @@ actions_vec = np.zeros(3)
 
 while True:
     # Action sampling and propagation
-    action, lstm_states = model.predict(obs, deterministic=True
-    )  # OSS: Episode start signals are used to reset the lstm states
+    action, _states = model.predict(obs, deterministic=True)  # OSS: Episode start signals are used to reset the lstm states
     obs, rewards, done, info = env.step(action)
 
     # Saving
