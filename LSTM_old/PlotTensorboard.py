@@ -6,7 +6,7 @@ import numpy as np
 # REWARD
 # Load data
 reward_data = pd.DataFrame.to_dict(pd.read_csv(
-    r"/ARPOD_50m_Const/tensorboard/RecurrentPPO_2/run-.-tag-rollout_ep_rew_mean.csv"
+    r"/LSTM_old/tensorboard/RecurrentPPO_2/run-.-tag-rollout_ep_rew_mean.csv"
 ))
 step = np.array(list(reward_data["Step"].values()))
 reward = np.array(list(reward_data["Value"].values()))
