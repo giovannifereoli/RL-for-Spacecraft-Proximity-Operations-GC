@@ -90,7 +90,7 @@ model = RecurrentPPO(
     clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-3,
-    policy_kwargs=dict(n_lstm_layers=2),
+    policy_kwargs=dict(n_lstm_layers=2),  # TODO: puoi provare a mettere piu feedforward un òayer da 256 al posto lstm
     # policy_kwargs=dict(enable_critic_lstm=False, n_lstm_layers=2, optimizer_kwargs=dict(weight_decay=1e-5)),
     tensorboard_log="./tensorboard/"
 )

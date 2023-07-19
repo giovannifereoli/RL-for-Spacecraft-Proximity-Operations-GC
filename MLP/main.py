@@ -90,7 +90,7 @@ model = PPO(
     clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-3,
-    policy_kwargs=dict(net_arch=[dict(pi=[256, 256, 64, 64], vf=[256, 256, 64, 64])]),
+    policy_kwargs=dict(net_arch=dict(pi=[256, 256, 64, 64], vf=[256, 256, 64, 64])),
     tensorboard_log="./tensorboard/"
 )
 
