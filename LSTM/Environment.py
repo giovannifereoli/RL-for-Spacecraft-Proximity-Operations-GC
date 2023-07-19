@@ -342,7 +342,7 @@ class ArpodCrtbp(gym.Env):
 
         # Dense/Episodic reward constraints
         reward += self.corridor_const(rho, xrel_new)
-        reward += self.attitude_const(T)
+        # reward += self.attitude_const(T)   # TODO: sistema questo
 
         # Scaling reward
         reward = reward / 50
@@ -375,7 +375,7 @@ class ArpodCrtbp(gym.Env):
         # Angular velocity
         Tnew_dir = Tnew / (np.linalg.norm(Tnew) + 1e-36)
         Told_dir = self.Told / (np.linalg.norm(self.Told) + 1e-36)
-        dTdt_ver = (Tnew_dir - Told_dir) / (self.dt * self.l_star)  # Finite differences
+        dTdt_ver = (Tnew_dir - Told_dir)  # Finite differences
         w_ang = np.linalg.norm(np.array([0, dTdt_ver[2], -dTdt_ver[1]]))
 
         # Dense reward attitude control
@@ -383,7 +383,7 @@ class ArpodCrtbp(gym.Env):
         if w_ang > np.deg2rad(10):
             self.infos = {"Episode success": "fast rotation"}
             print("Fast rotation.")
-            reward_w += 10
+            reward_w += - 30
             self.done = True
 
         # Update Told

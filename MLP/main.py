@@ -17,7 +17,7 @@ dt = 0.5
 ToF = 200
 batch_size = 64
 
-rho_max = 60
+rho_max = 70
 rhodot_max = 6
 
 ang_corr = np.deg2rad(20)
@@ -84,12 +84,13 @@ model = PPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.00001,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
+    learning_rate=0.00005,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
     max_grad_norm=0.1,
-    ent_coef=1e-4,
+    ent_coef=1e-3,
+    policy_kwargs=dict(net_arch=[dict(pi=[256, 256, 64, 64], vf=[256, 256, 64, 64])]),
     tensorboard_log="./tensorboard/"
 )
 
@@ -137,7 +138,7 @@ position = obs_vec[:, 6:9] * l_star
 velocity = obs_vec[:, 9:12] * l_star / t_star
 mass = obs_vec[:, 12] * m_star
 thrust = actions_vec * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt) + 1)
+t = np.linspace(0, ToF, int(ToF / dt) + 1)[0:len(position)]
 
 # Plot full trajectory ONCE
 plt.close()

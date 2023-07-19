@@ -12,11 +12,11 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200
+ToF = 800
 batch_size = 64
 
-rho_max = 70
-rhodot_max = 6
+rho_max = 1400
+rhodot_max = 50
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
@@ -32,21 +32,21 @@ actions_space = 3
 x0t_state = np.array(
     [
         1.02206694e00,
-        -1.32282592e-07,
+        -2.61552389e-06,
         -1.82100000e-01,
-        -1.69229909e-07,
+        -3.34605533e-06,
         -1.03353155e-01,
-        6.44013821e-07
+        1.27335994e-05,
     ]
-)  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
+)  # 9:2 NRO - 1000m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
     [
-        1.08357767e-13,
-        1.32282592e-07,
-        -4.12142542e-13,
-        1.69229909e-07,
-        -3.65860120e-13,
-        -6.44013821e-07
+        4.23387991e-11,
+        2.61552389e-06,
+        -1.61122476e-10,
+        3.34605533e-06,
+        -1.43029505e-10,
+        -1.27335994e-05,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -56,7 +56,7 @@ x0ivp_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            5 * np.ones(3) / l_star,
+            100 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)

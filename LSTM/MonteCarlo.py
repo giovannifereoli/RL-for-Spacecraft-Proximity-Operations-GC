@@ -1,6 +1,6 @@
 # Import libraries
 import numpy as np
-from stable_baselines3 import PPO
+from sb3_contrib import RecurrentPPO
 from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
@@ -80,7 +80,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = PPO.load("ppo_mlp")
+model = RecurrentPPO.load("ppo_recurrent")
 print(model.policy)
 
 # Trajectory propagation
@@ -113,13 +113,14 @@ for num_ep in range(num_episode_MCM):
     # Initialization
     obs = env.reset()
     obs_vec = env.scaler_reverse_observation(obs)
+    lstm_states = None
     done = True
 
     # Propagation
     while True:
         # Action sampling and propagation
-        action, _states = model.predict(
-            obs, deterministic=True
+        action, lstm_states = model.predict(
+            obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
         )  # OSS: Episode start signals are used to reset the lstm states
         obs, rewards, done, info = env.step(action)
 

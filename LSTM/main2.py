@@ -14,11 +14,11 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200
+ToF = 200  # TODO: abbassa questo, meno lr, piu batch, piu stabile etc
 batch_size = 64
 
-rho_max = 250
-rhodot_max = 20
+rho_max = 270
+rhodot_max = 20  # TODO: 1e-5 colpetto alla fine aiuta, farlo fin dall'inizio? TL? lr scheduler?
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
@@ -77,30 +77,40 @@ env = ArpodCrtbp(
     safety_vel=safety_vel
 )
 check_env(env)
+model = RecurrentPPO(
+    "MlpLstmPolicy",
+    env,
+    verbose=1,
+    batch_size=batch_size,
+    n_steps=int(batch_size * ToF / dt),
+    n_epochs=10,
+    learning_rate=0.00005,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
+    gamma=0.99,
+    gae_lambda=1,
+    clip_range=0.1,
+    max_grad_norm=0.1,
+    ent_coef=1e-3,
+    policy_kwargs=dict(n_lstm_layers=2),
+    tensorboard_log="./tensorboard/"
+)
+
+print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
-model = RecurrentPPO.load(
-    "ppo_recurrent2",
-    print_system_info=True,
-    custom_objects={"learning_rate": 1e-5},
-    tensorboard_log=f"tensorboard\RecurrentPPO_2",
-)
-print(model.policy)
-model.set_env(env)
-model.learn(total_timesteps=5000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=6000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_recurrent2TL")
+model.save("ppo_recurrent2")
 
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent2TL")
+model = RecurrentPPO.load("ppo_recurrent2")
 obs = env.reset()
 
 # Trajectory propagation
@@ -132,7 +142,7 @@ position = obs_vec[:, 6:9] * l_star
 velocity = obs_vec[:, 9:12] * l_star / t_star
 mass = obs_vec[:, 12] * m_star
 thrust = actions_vec * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt) + 1)
+t = np.linspace(0, ToF, int(ToF / dt) + 1)[0:len(position)]
 
 # Plot full trajectory ONCE
 plt.close()
@@ -182,7 +192,7 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 # ax.set_aspect("auto")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\Trajectory2TL.pdf")  # Save
+plt.savefig("plots\Trajectory2.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -191,7 +201,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\Velocity2TL.pdf")  # Save
+plt.savefig("plots\Velocity2.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -200,7 +210,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\Position2TL.pdf")  # Save
+plt.savefig("plots\Position2.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -209,7 +219,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\Mass2TL.pdf")  # Save
+plt.savefig("plots\Mass2.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -237,7 +247,7 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\Thrust2TL.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\Thrust2.pdf", bbox_inches="tight")  # Save
 
 # Plot angular velocity
 dTdt_ver = np.zeros([len(t), 3])
@@ -255,5 +265,5 @@ plt.plot(t, w_ang, c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVel2TL.pdf")  # Save
+plt.savefig("plots\AngVel2.pdf")  # Save
 
