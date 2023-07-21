@@ -14,7 +14,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200
+ToF = 200  # TODO: da ridurre per semplificare training
 batch_size = 64
 
 rho_max = 70
@@ -268,6 +268,8 @@ plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
 plt.savefig("plots\AngVel1.pdf")  # Save
 
+
+# TODO: metti plot montecarlo ToF per contestualizzare dV, oppure scrivilo
 
 
 

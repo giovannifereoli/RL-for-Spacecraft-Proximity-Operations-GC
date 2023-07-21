@@ -84,7 +84,7 @@ model = RecurrentPPO.load("ppo_recurrent2")
 print(model.policy)
 
 # Trajectory propagation
-num_episode_MCM = 200
+num_episode_MCM = 500
 num_ep = 0
 docked = np.zeros(num_episode_MCM)
 posfin_mean = 0

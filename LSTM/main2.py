@@ -98,7 +98,7 @@ print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=6000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)

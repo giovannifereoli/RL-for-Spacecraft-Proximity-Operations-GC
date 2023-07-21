@@ -17,7 +17,7 @@ dt = 0.5
 ToF = 800
 batch_size = 64
 
-rho_max = 1300
+rho_max = 1400
 rhodot_max = 50
 
 ang_corr = np.deg2rad(20)

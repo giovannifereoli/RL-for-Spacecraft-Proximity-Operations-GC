@@ -1,7 +1,7 @@
 # Import libraries
 import numpy as np
-from sb3_contrib import RecurrentPPO
-from Environment import ArpodCrtbp
+from stable_baselines3 import PPO
+from EnvironmentExtra import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
 
@@ -12,11 +12,11 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 800
+ToF = 200
 batch_size = 64
 
-rho_max = 1400
-rhodot_max = 50
+rho_max = 270
+rhodot_max = 20  # TODO: 1e-5 colpetto alla fine aiuta, farlo fin dall'inizio? TL? lr scheduler?
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
@@ -32,21 +32,21 @@ actions_space = 3
 x0t_state = np.array(
     [
         1.02206694e00,
-        -2.61552389e-06,
+        -5.25240280e-07,
         -1.82100000e-01,
-        -3.34605533e-06,
+        -6.71943026e-07,
         -1.03353155e-01,
-        1.27335994e-05,
+        2.55711651e-06,
     ]
-)  # 9:2 NRO - 1000m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
+)  # 9:2 NRO - 200m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
     [
-        4.23387991e-11,
-        2.61552389e-06,
-        -1.61122476e-10,
-        3.34605533e-06,
-        -1.43029505e-10,
-        -1.27335994e-05,
+        1.70730097e-12,
+        5.25240280e-07,
+        -6.49763576e-12,
+        6.71943026e-07,
+        -5.76798331e-12,
+        -2.55711651e-06,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -56,7 +56,7 @@ x0ivp_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            100 * np.ones(3) / l_star,
+            20 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
@@ -80,11 +80,11 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent")
+model = PPO.load("ppo_mlp2")
 print(model.policy)
 
 # Trajectory propagation
-num_episode_MCM = 200
+num_episode_MCM = 500
 num_ep = 0
 docked = np.zeros(num_episode_MCM)
 posfin_mean = 0
@@ -113,14 +113,13 @@ for num_ep in range(num_episode_MCM):
     # Initialization
     obs = env.reset()
     obs_vec = env.scaler_reverse_observation(obs)
-    lstm_states = None
     done = True
 
     # Propagation
     while True:
         # Action sampling and propagation
-        action, lstm_states = model.predict(
-            obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
+        action, _states = model.predict(
+            obs, deterministic=True
         )  # OSS: Episode start signals are used to reset the lstm states
         obs, rewards, done, info = env.step(action)
 
@@ -226,5 +225,5 @@ ax.set_title(
     y=1,
     pad=-3,
 )
-plt.savefig("plots\MCM_TrajectoryExtra.pdf")  # Save
+plt.savefig("plots\MCM_TrajectoryExtra2.pdf")  # Save
 plt.show()

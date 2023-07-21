@@ -80,11 +80,11 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = PPO.load("ppo_mlp")
+model = PPO.load("ppo_mlp1")
 print(model.policy)
 
 # Trajectory propagation
-num_episode_MCM = 200
+num_episode_MCM = 500
 num_ep = 0
 docked = np.zeros(num_episode_MCM)
 posfin_mean = 0
@@ -221,7 +221,7 @@ ax.set_title(
     "\n $\mu_{|\mathbf{x}|}$: [%.3f m, %.3f m/s] "
     "\n $\sigma_{|\mathbf{x}|}$: [%.3f m, %.3f m/s] "
     "\n $\mu_{\Delta V}, \sigma_{\Delta V}$: %.3f m/s, %.3f m/s"
-    % (prob_RVD, posfin_mean, velfin_mean, posfin_std, velfin_std, dv_mean, dv_std),
+    % (prob_RVD, posfin_mean, velfin_mean, posfin_std, velfin_std, dv_mean, dv_std),  # TODO: const e plot sono definiti diveramente a quanto pare
     y=1,
     pad=-3,
 )

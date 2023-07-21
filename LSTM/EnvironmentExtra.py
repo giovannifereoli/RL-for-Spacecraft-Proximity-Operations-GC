@@ -43,10 +43,10 @@ class ArpodCrtbp(gym.Env):
         self.Told = np.zeros(3)
         self.randomc = random.choice([1, 2, 3, 4])
         self.randomT = np.ones(3)
-        self.failure = 0.5
-        self.dyn_uncertainty = 1e-10  # OSS: 1e-6 / mass  [adim]
+        self.failure = 0.25
+        self.dyn_uncertainty = 1e-9  # OSS: 1e-6 / mass  [adim]
         if self.randomc != 4:
-            self.randomT[self.randomc - 1] = self.failure # TODO: fialure funziona?
+            self.randomT[self.randomc - 1] = self.failure
 
         # STATE AND ACTION SPACES
         self.action_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
@@ -110,8 +110,7 @@ class ArpodCrtbp(gym.Env):
             self.state0, self.state0_std
         )  # OSS: not normalized as first step
         self.reward_old = self.get_reward(
-            np.array([0, 0, 0])
-        )  # OSS: Reward t-1 without action
+            np.array([0, 0, 0]))  # OSS: Reward t-1 without action
 
         # Part 2: get Initial State
         self.state0 = np.concatenate([x0ivp, np.array([0, self.reward_old])])
@@ -326,7 +325,7 @@ class ArpodCrtbp(gym.Env):
         # Dense/Episodic reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
         self.infos = {"Episode success": "approaching"}
-        if rho >= self.rho_max:  # OSS: no backward motion
+        if rho >= self.rho_max:   # OSS: no backward motion
             self.infos = {"Episode success": "lost"}
             print("Lost.")
             reward += -30
@@ -338,11 +337,11 @@ class ArpodCrtbp(gym.Env):
             self.done = True
 
         # Dense reward thrust optimization
-        reward += -(1 / 100) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2
+        reward += - (1 / 100) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2
 
         # Dense/Episodic reward constraints
         reward += self.corridor_const(rho, xrel_new)
-        # reward += self.attitude_const(T)   # TODO: sistema questo
+        # reward += self.attitude_const(T)
 
         # Scaling reward
         reward = reward / 50
@@ -354,13 +353,13 @@ class ArpodCrtbp(gym.Env):
         pos_vec = xrel_new[0:3] * self.l_star
         cone_vec = np.array([0, 1, 0])
         ang = np.arccos(np.dot(pos_vec, cone_vec) / rho)
-        len_cut = np.sqrt((self.safety_radius**2) / np.square(np.tan(self.ang_corr)))
-        const_signal = -np.dot(
-            pos_vec + np.array([0, len_cut, 0]), cone_vec
-        ) + rho * np.cos(self.ang_corr)   # TODO: diverso da plot
+        len_cut = np.sqrt((self.safety_radius ** 2) / np.square(np.tan(self.ang_corr)))
+        const_signal = -np.dot(pos_vec + np.array([0, len_cut, 0]), cone_vec) + rho * np.cos(
+            self.ang_corr
+        )
 
         # Computation reward w.r.t. angle
-        reward_cons = -(1 / 10) * np.exp(ang / (2 * np.pi)) ** 2
+        reward_cons = - (1 / 10) * np.exp(ang / (2 * np.pi)) ** 2
 
         # Computation collision
         if const_signal > 0:  # and rho > 1.5:  # OSS: if B*x>0 constraint violated
@@ -375,11 +374,11 @@ class ArpodCrtbp(gym.Env):
         # Angular velocity
         Tnew_dir = Tnew / (np.linalg.norm(Tnew) + 1e-36)
         Told_dir = self.Told / (np.linalg.norm(self.Told) + 1e-36)
-        dTdt_ver = (Tnew_dir - Told_dir)  # Finite differences
-        w_ang = np.linalg.norm(np.array([0, dTdt_ver[2], -dTdt_ver[1]]))
+        dTdt_ver = (Tnew_dir - Told_dir)   # Finite differences
+        w_ang = np.linalg.norm(np.array([0, dTdt_ver[2], - dTdt_ver[1]]))
 
         # Dense reward attitude control
-        reward_w = -(1 / 10) * np.exp(w_ang / (2 * np.pi)) ** 2
+        reward_w = - (1 / 10) * np.exp(w_ang / (2 * np.pi)) ** 2
         if w_ang > np.deg2rad(10):
             self.infos = {"Episode success": "fast rotation"}
             print("Fast rotation.")

@@ -1,6 +1,6 @@
 # Import libraries
 import numpy as np
-from sb3_contrib import RecurrentPPO
+from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
@@ -17,8 +17,8 @@ dt = 0.5
 ToF = 200
 batch_size = 64
 
-rho_max = 70
-rhodot_max = 6
+rho_max = 270
+rhodot_max = 20
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
@@ -32,21 +32,21 @@ actions_space = 3
 x0t_state = np.array(
     [
         1.02206694e00,
-        -1.32282592e-07,
+        -5.25240280e-07,
         -1.82100000e-01,
-        -1.69229909e-07,
+        -6.71943026e-07,
         -1.03353155e-01,
-        6.44013821e-07
+        2.55711651e-06,
     ]
-)  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
+)  # 9:2 NRO - 200m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
     [
-        1.08357767e-13,
-        1.32282592e-07,
-        -4.12142542e-13,
-        1.69229909e-07,
-        -3.65860120e-13,
-        -6.44013821e-07
+        1.70730097e-12,
+        5.25240280e-07,
+        -6.49763576e-12,
+        6.71943026e-07,
+        -5.76798331e-12,
+        -2.55711651e-06,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -56,10 +56,12 @@ x0ivp_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            5 * np.ones(3) / l_star,
+            20 * np.ones(1) / l_star,
+            60 * np.ones(1) / l_star,
+            20 * np.ones(1) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
-            0.005 * x0r_mass,
-            np.zeros(1)
+            0.02 * x0r_mass,
+            0.1 * x0_time_rem
         )
     )
 )
@@ -77,8 +79,8 @@ env = ArpodCrtbp(
     safety_vel=safety_vel
 )
 check_env(env)
-model = RecurrentPPO(
-    "MlpLstmPolicy",
+model = PPO(
+    "MlpPolicy",
     env,
     verbose=1,
     batch_size=batch_size,
@@ -90,8 +92,7 @@ model = RecurrentPPO(
     clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-3,
-    policy_kwargs=dict(net_arch=dict(pi=[256, 64, 64], vf=[256, 64, 64])),  # TODO: puoi provare a mettere piu feedforward un òayer da 256 al posto lstm
-    # policy_kwargs=dict(enable_critic_lstm=False, n_lstm_layers=2, optimizer_kwargs=dict(weight_decay=1e-5)),
+    policy_kwargs=dict(net_arch=dict(pi=[256, 256, 64, 64], vf=[256, 256, 64, 64])),
     tensorboard_log="./tensorboard/"
 )
 
@@ -99,33 +100,29 @@ print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=5000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=7000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_recurrent")
-
+model.save("ppo_mlpUnc")
+'''
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent")
+model = PPO.load("ppo_mlp2")
 obs = env.reset()
 
 # Trajectory propagation
-lstm_states = None
-done = True
 obs_vec = env.scaler_reverse_observation(obs)
 rewards_vec = np.array([])
 actions_vec = np.zeros(3)
 
 while True:
     # Action sampling and propagation
-    action, lstm_states = model.predict(
-        obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
-    )  # OSS: Episode start signals are used to reset the lstm states
+    action, _states = model.predict(obs, deterministic=True)  # OSS: Episode start signals are used to reset the lstm states
     obs, rewards, done, info = env.step(action)
 
     # Saving
@@ -193,7 +190,7 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 # ax.set_aspect("auto")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\Trajectory1.pdf")  # Save
+plt.savefig("plots\Trajectory2.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -202,7 +199,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\Velocity1.pdf")  # Save
+plt.savefig("plots\Velocity2.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -211,7 +208,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\Position1.pdf")  # Save
+plt.savefig("plots\Position2.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -220,7 +217,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\Mass1.pdf")  # Save
+plt.savefig("plots\Mass2.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -248,27 +245,23 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\Thrust1.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\Thrust2.pdf", bbox_inches="tight")  # Save
 
 # Plot angular velocity
 dTdt_ver = np.zeros([len(t), 3])
 w_ang = np.zeros(len(t))
 w_ang[0] = np.nan
-dTdt_ver = np.diff(thrust / np.linalg.norm(thrust), axis=0) / dt   # Finite difference
+dTdt_ver = np.diff(thrust / np.linalg.norm(thrust), axis=0) / dt  # Finite difference
 Tb_ver = np.array([1, 0, 0])
 for i in range(len(w_ang) - 1):  # OSS: T aligned with x-axis body-frame assumptions.
     wy = dTdt_ver[i, 2] / Tb_ver[0]
-    wz = - dTdt_ver[i, 1] / Tb_ver[0]
+    wz = -dTdt_ver[i, 1] / Tb_ver[0]
     w_ang[i + 1] = np.rad2deg(np.linalg.norm(np.array([0, wy, wz])))
 plt.close()  # Initialize
 plt.figure()
-plt.plot(t[1:-1], w_ang[1:-1], c="c", linewidth=2)
+plt.plot(t, w_ang, c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVel1.pdf")  # Save
-
-
-
-
-
+plt.savefig("plots\AngVel2.pdf")  # Save
+'''

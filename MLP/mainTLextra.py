@@ -1,6 +1,6 @@
 # Import libraries
 import numpy as np
-from sb3_contrib import RecurrentPPO
+from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
@@ -80,41 +80,38 @@ check_env(env)
 
 # Start learning
 call_back = CallBack(env)
-model = RecurrentPPO.load(
-    "ppo_recurrent2",
+model = PPO.load(
+    "ppo_mlp1",
     print_system_info=True,
-    custom_objects={"learning_rate": 0.5 * 1e-5},
-    tensorboard_log=f"tensorboard\RecurrentPPO_2",
+    custom_objects={"learning_rate": 5 * 1e-5},
+    # tensorboard_log=f"tensorboard\RecurrentPPO_1",
 )
 print(model.policy)
 model.set_env(env)
-model.learn(total_timesteps=1000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=2000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_recurrent2TL")
+model.save("ppo_mlp1extra")  # TODO: attento al nome qua
 
+'''
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent2TL")
+model = PPO.load("ppo_mlp2")
 obs = env.reset()
 
 # Trajectory propagation
-lstm_states = None
-done = True
 obs_vec = env.scaler_reverse_observation(obs)
 rewards_vec = np.array([])
 actions_vec = np.zeros(3)
 
 while True:
     # Action sampling and propagation
-    action, lstm_states = model.predict(
-        obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
-    )  # OSS: Episode start signals are used to reset the lstm states
+    action, _states = model.predict(obs, deterministic=True)  # OSS: Episode start signals are used to reset the lstm states
     obs, rewards, done, info = env.step(action)
 
     # Saving
@@ -132,7 +129,7 @@ position = obs_vec[:, 6:9] * l_star
 velocity = obs_vec[:, 9:12] * l_star / t_star
 mass = obs_vec[:, 12] * m_star
 thrust = actions_vec * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt) + 1)
+t = np.linspace(0, ToF, int(ToF / dt) + 1)[0:len(position)]
 
 # Plot full trajectory ONCE
 plt.close()
@@ -182,7 +179,7 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 # ax.set_aspect("auto")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\Trajectory2TL.pdf")  # Save
+plt.savefig("plots\Trajectory2.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -191,7 +188,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\Velocity2TL.pdf")  # Save
+plt.savefig("plots\Velocity2.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -200,7 +197,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\Position2TL.pdf")  # Save
+plt.savefig("plots\Position2.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -209,7 +206,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\Mass2TL.pdf")  # Save
+plt.savefig("plots\Mass2.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -237,7 +234,7 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\Thrust2TL.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\Thrust2.pdf", bbox_inches="tight")  # Save
 
 # Plot angular velocity
 dTdt_ver = np.zeros([len(t), 3])
@@ -255,5 +252,5 @@ plt.plot(t, w_ang, c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVel2TL.pdf")  # Save
-
+plt.savefig("plots\AngVel2.pdf")  # Save
+'''
