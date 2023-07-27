@@ -83,8 +83,8 @@ call_back = CallBack(env)
 model = RecurrentPPO.load(
     "ppo_recurrent",
     print_system_info=True,
-    custom_objects={"learning_rate": 0.5 * 1e-5},
-    tensorboard_log=f"tensorboard\RecurrentPPO_1",
+    custom_objects={"learning_rate": 5 * 1e-6},
+    tensorboard_log=f"tensorboard\RecurrentPPO_19",
 )
 print(model.policy)
 model.set_env(env)
@@ -100,7 +100,7 @@ model.save("ppo_recurrentTL")
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrentTL")
+model = RecurrentPPO.load("ppo_recurrentTLpt2")
 obs = env.reset()
 
 # Trajectory propagation
@@ -128,11 +128,11 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[:, 6:9] * l_star
-velocity = obs_vec[:, 9:12] * l_star / t_star
-mass = obs_vec[:, 12] * m_star
-thrust = actions_vec * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt) + 1)
+position = obs_vec[1:-1, 6:9] * l_star
+velocity = obs_vec[1:-1, 9:12] * l_star / t_star
+mass = obs_vec[1:-1, 12] * m_star
+thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
+t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
 
 # Plot full trajectory ONCE
 plt.close()

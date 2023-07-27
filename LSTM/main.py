@@ -7,6 +7,17 @@ from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
 from CallBack import CallBack
 
+
+# FUNCTION lrsched()
+def lrsched():
+    def reallr(progress):
+        lr = 0.00005
+        if progress < 0.85:
+            lr = 0.00001
+        return lr
+    return reallr
+
+
 # TRAINING
 # Data and initialization
 m_star = 6.0458 * 1e24  # Kilograms
@@ -14,7 +25,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200  # TODO: da ridurre per semplificare training
+ToF = 80  # TODO: da ridurre per semplificare training
 batch_size = 64
 
 rho_max = 70
@@ -84,13 +95,13 @@ model = RecurrentPPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.00005,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
-    gamma=0.99,
+    learning_rate=lrsched(),
+    gamma=0.99,  # TODO: perchè ora sembra non andare più?
     gae_lambda=1,
-    clip_range=0.1,
+    clip_range=0.1,  # TODO: hai ancora un problema di stabilità, sistema con lr 2.5*1e-5?
     max_grad_norm=0.1,
     ent_coef=1e-3,
-    policy_kwargs=dict(n_lstm_layers=2),  # TODO: puoi provare a mettere piu feedforward un òayer da 256 al posto lstm
+    policy_kwargs=dict(n_lstm_layers=2),
     # policy_kwargs=dict(enable_critic_lstm=False, n_lstm_layers=2, optimizer_kwargs=dict(weight_decay=1e-5)),
     tensorboard_log="./tensorboard/"
 )
@@ -99,7 +110,7 @@ print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=5000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -139,11 +150,11 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[:, 6:9] * l_star
-velocity = obs_vec[:, 9:12] * l_star / t_star
-mass = obs_vec[:, 12] * m_star
-thrust = actions_vec * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt) + 1)[0:len(position)]
+position = obs_vec[1:-1, 6:9] * l_star
+velocity = obs_vec[1:-1, 9:12] * l_star / t_star
+mass = obs_vec[1:-1, 12] * m_star
+thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
+t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
 
 # Plot full trajectory ONCE
 plt.close()
@@ -254,7 +265,7 @@ plt.savefig("plots\Thrust1.pdf", bbox_inches="tight")  # Save
 dTdt_ver = np.zeros([len(t), 3])
 w_ang = np.zeros(len(t))
 w_ang[0] = np.nan
-dTdt_ver = np.diff(thrust / np.linalg.norm(thrust), axis=0) / dt   # Finite difference
+dTdt_ver = np.diff(thrust / np.linalg.norm(thrust), axis=0) / dt  # Finite difference
 Tb_ver = np.array([1, 0, 0])
 for i in range(len(w_ang) - 1):  # OSS: T aligned with x-axis body-frame assumptions.
     wy = dTdt_ver[i, 2] / Tb_ver[0]
@@ -268,9 +279,4 @@ plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
 plt.savefig("plots\AngVel1.pdf")  # Save
 
-
-# TODO: metti plot montecarlo ToF per contestualizzare dV, oppure scrivilo
-
-
-
-
+# TODO: perchè l'ultimo mcm ha sminchiato? controlla differenze con questo e ultimi logger prima di chiudere

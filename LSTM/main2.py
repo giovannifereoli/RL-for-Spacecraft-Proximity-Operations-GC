@@ -14,11 +14,11 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200  # TODO: abbassa questo, meno lr, piu batch, piu stabile etc
+ToF = 200  # TODO: abbassa questo, meno lr, piu batch, piu stabile etc --> lr scheduler e piu step, devi ottenere migliore convergenze
 batch_size = 64
 
 rho_max = 270
-rhodot_max = 20  # TODO: 1e-5 colpetto alla fine aiuta, farlo fin dall'inizio? TL? lr scheduler?
+rhodot_max = 20
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
@@ -94,16 +94,16 @@ model = RecurrentPPO(
     tensorboard_log="./tensorboard/"
 )
 
-print(model.policy)
+print(model.policy)  # OSS: questo dovrebbe andare 8M e l'altro 4M
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
+# model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
-mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
-print(mean_reward)
-model.save("ppo_recurrent2")
+# mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
+# print(mean_reward)
+# model.save("ppo_recurrent2")
 
 # TESTING
 # Remove to demonstrate saving and loading
@@ -138,11 +138,11 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[:, 6:9] * l_star
-velocity = obs_vec[:, 9:12] * l_star / t_star
-mass = obs_vec[:, 12] * m_star
-thrust = actions_vec * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt) + 1)[0:len(position)]
+position = obs_vec[1:-1, 6:9] * l_star
+velocity = obs_vec[1:-1, 9:12] * l_star / t_star
+mass = obs_vec[1:-1, 12] * m_star
+thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
+t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
 
 # Plot full trajectory ONCE
 plt.close()

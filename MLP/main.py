@@ -94,7 +94,7 @@ model = PPO(
     tensorboard_log="./tensorboard/"
 )
 
-print(model.policy)  # TODO: dai un colpetto qua di TL
+print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
@@ -110,7 +110,7 @@ model.save("ppo_mlp")
 del model
 
 # Loading model and reset environment
-model = PPO.load("ppo_mlp")
+model = PPO.load("ppo_mlp1")
 obs = env.reset()
 
 # Trajectory propagation
@@ -134,11 +134,11 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[:, 6:9] * l_star
-velocity = obs_vec[:, 9:12] * l_star / t_star
-mass = obs_vec[:, 12] * m_star
-thrust = actions_vec * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt) + 1)[0:len(position)]
+position = obs_vec[1:-1, 6:9] * l_star
+velocity = obs_vec[1:-1, 9:12] * l_star / t_star
+mass = obs_vec[1:-1, 12] * m_star
+thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
+t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
 
 # Plot full trajectory ONCE
 plt.close()

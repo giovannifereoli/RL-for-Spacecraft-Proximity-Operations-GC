@@ -16,7 +16,7 @@ ToF = 200
 batch_size = 64
 
 rho_max = 270
-rhodot_max = 20  # TODO: 1e-5 colpetto alla fine aiuta, farlo fin dall'inizio? TL? lr scheduler?
+rhodot_max = 20
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
@@ -99,8 +99,8 @@ len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
 rad_kso = rho_max + len_cut
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
-y_cone = np.sqrt((x_cone**2 + z_cone**2) / np.square(np.tan(ang_corr)))
-y_cone = np.where(y_cone > rad_kso, np.nan, y_cone) - len_cut
+y_cone = np.sqrt((x_cone**2 + z_cone**2) / np.square(np.tan(ang_corr))) - len_cut
+y_cone = np.where(y_cone > rho_max, np.nan, y_cone)
 y_cone = np.where(y_cone < 0, np.nan, y_cone)
 
 # Plot
@@ -218,8 +218,8 @@ ax.zaxis.pane.fill = False
 ax.view_init(elev=0, azim=0)
 ax.set_title(
     " $S_r$ : %.1f %% "
-    "\n $\mu_{|\mathbf{x}|}$: [%.3f m, %.3f m/s] "
-    "\n $\sigma_{|\mathbf{x}|}$: [%.3f m, %.3f m/s] "
+    "\n $\mu_{|\mathbf{x}_f|}$: [%.3f m, %.3f m/s] "
+    "\n $\sigma_{|\mathbf{x}_f|}$: [%.3f m, %.3f m/s] "
     "\n $\mu_{\Delta V}, \sigma_{\Delta V}$: %.3f m/s, %.3f m/s"
     % (prob_RVD, posfin_mean, velfin_mean, posfin_std, velfin_std, dv_mean, dv_std),
     y=1,

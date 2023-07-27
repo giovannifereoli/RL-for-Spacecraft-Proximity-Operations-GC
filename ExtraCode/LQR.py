@@ -119,7 +119,7 @@ def rel_crtbpT(
     # Initial Mass Target
     m = x[12]
     # Initialize Thrust action
-    T = - max_thrust * np.dot(K, x[6:12])
+    T = - max_thrust * 1e3 * np.dot(K, x[6:12])
     Tx = T[0]
     Ty = T[1]
     Tz = T[2]
@@ -228,8 +228,8 @@ x02 = np.concatenate((x0_target, x0_relative, x0_mass))
 A = scipy.optimize.approx_fprime(f=rel_crtbp, xk=x0)
 A = A[6:12, 6:12]
 B = np.array(([0, 0, 0], [0, 0, 0], [0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]))
-Q = 1e2 * np.eye(6)
-R = (max_thrust ** - 2) * np.eye(3)   # OSS: Bryson's rule
+Q = np.eye(6)  # 1e2 * np.eye(6)
+R = np.eye(3)  # (max_thrust ** - 2) * np.eye(3)   # OSS: Bryson's rule
 
 # LQR
 K, S, E = ct.lqr(A, B, Q, R)
@@ -273,13 +273,13 @@ ax.plot3D(xr_sol[:, 0], xr_sol[:, 1], xr_sol[:, 2], "b", linewidth=2)
 ax.plot3D(0, 0, 0, "ko", markersize=5)
 ax.plot3D(xr_sol[0, 0], xr_sol[0, 1], xr_sol[0, 2], "go", markersize=5)
 ax.plot3D(xr_sol[-1, 0], xr_sol[-1, 1], xr_sol[-1, 2], "ro", markersize=5)
-ax.legend(["Trajectory", "Target", "Initial State", "Final State"], loc="upper right")
+ax.legend(["Trajectory", "Target", "Initial State", "Final State"], ncol=2, loc="lower center")
 ax.plot_surface(x_cone, z_cone, y_cone, color="k", alpha=0.1)
 ax.set_xlabel("$\delta x$ [DU]")
 ax.set_ylabel("$\delta y$ [DU]")
 ax.zaxis.set_rotate_label(False)
-ax.set_zlabel("$\delta z$ [DU]", rotation=90, labelpad=20)
-ax.set_xticks([0])
+ax.set_zlabel("$\delta z$ [DU]", rotation=-45, labelpad=5)
+ax.set_zticks([0])
 plt.locator_params(axis="x", nbins=4)
 plt.locator_params(axis="y", nbins=4)
 plt.locator_params(axis="z", nbins=4)
@@ -291,7 +291,8 @@ plt.tick_params(axis="z", which="major", pad=10)
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
-ax.view_init(elev=10, azim=30)
+ax.view_init(elev=90, azim=0)
+plt.savefig(".\LQR_Trajectory.pdf")  # Save
 plt.show()
 
 # Plot mass usage

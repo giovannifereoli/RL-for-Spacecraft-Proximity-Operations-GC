@@ -249,3 +249,18 @@ plt.xlim(t[0], t[-1])
 plt.savefig("plots\Thrust3.pdf", bbox_inches="tight")  # Save
 
 # TODO: lo faccio transfer learning? lo faccio come comparison out of dataset?
+
+
+def lrsched():
+  def reallr(progress):
+    lr = 0.003
+    if progress < 0.85:
+      lr = 0.0005
+    if progress < 0.66:
+      lr = 0.00025
+    if progress < 0.33:
+      lr = 0.0001
+    return lr
+  return reallr
+
+# model = PPO(...learning_rate=lrsched())

@@ -46,7 +46,7 @@ class ArpodCrtbp(gym.Env):
         self.failure = 0.5
         self.dyn_uncertainty = 1e-10  # OSS: 1e-6 / mass  [adim]
         if self.randomc != 4:
-            self.randomT[self.randomc - 1] = self.failure # TODO: fialure funziona?
+            self.randomT[self.randomc - 1] = self.failure
 
         # STATE AND ACTION SPACES
         self.action_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
@@ -167,7 +167,7 @@ class ArpodCrtbp(gym.Env):
             Tx = T[0]
             Ty = T[1]
             Tz = T[2]
-            T_norm = np.linalg.norm(T)
+            T_norm = np.linalg.norm(T)  # TODO: perchè thrust è bloccato a -15 costante?
 
             # Relative CRTBP Dynamics
             r1t = [xt + mu, yt, zt]
@@ -357,7 +357,7 @@ class ArpodCrtbp(gym.Env):
         len_cut = np.sqrt((self.safety_radius**2) / np.square(np.tan(self.ang_corr)))
         const_signal = -np.dot(
             pos_vec + np.array([0, len_cut, 0]), cone_vec
-        ) + rho * np.cos(self.ang_corr)   # TODO: diverso da plot
+        ) + rho * np.cos(self.ang_corr)
 
         # Computation reward w.r.t. angle
         reward_cons = -(1 / 10) * np.exp(ang / (2 * np.pi)) ** 2
