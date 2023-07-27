@@ -12,7 +12,7 @@ from CallBack import CallBack
 def lrsched():
     def reallr(progress):
         lr = 0.00005
-        if progress < 0.85:
+        if progress < 0.75:
             lr = 0.00001
         return lr
     return reallr
