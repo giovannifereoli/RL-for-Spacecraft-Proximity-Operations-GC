@@ -220,32 +220,31 @@ ax.plot3D(0, 0, 0, "ko", markersize=5)
 ax.plot3D(xr_sol[0, 0], xr_sol[0, 1], xr_sol[0, 2], "go", markersize=5)
 ax.plot3D(xr_sol[-1, 0], xr_sol[-1, 1], xr_sol[-1, 2], "ro", markersize=5)
 ax.legend(
-    ["Trajectory", "Target", "Initial State", "Final State"], ncol=2, loc="lower center"
+    ["Trajectory", "Target", "Initial State", "Final State"], ncol=2, loc="upper center"
 )
 ax.plot_surface(x_cone, z_cone, y_cone, color="k", alpha=0.1)
-ax.set_xlabel("$\delta x$ [m]")
-ax.set_ylabel("$\delta y$ [m]")
+ax.set_xlabel("$\delta x$ [m]", labelpad=15)
+plt.xticks([0])
+ax.set_ylabel("$\delta y$ [m]", labelpad=10)
 ax.zaxis.set_rotate_label(False)
-ax.set_zlabel("$\delta z$ [m]", rotation=-45, labelpad=5)
-ax.set_zticks([0])
-plt.locator_params(axis="x", nbins=4)
-plt.locator_params(axis="y", nbins=4)
-plt.locator_params(axis="z", nbins=4)
-# ax.set_aspect("equal", "box")
+ax.set_zlabel("$\delta z$ [m]", labelpad=10, rotation=90)
+# plt.locator_params(axis="x", nbins=1)
+plt.locator_params(axis="y", nbins=6)
+plt.locator_params(axis="z", nbins=6)
 ax.xaxis.pane.set_edgecolor("black")
 ax.yaxis.pane.set_edgecolor("black")
 ax.zaxis.pane.set_edgecolor("black")
-plt.tick_params(axis="z", which="major", pad=10)
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
+ax.set_aspect("equal", "box")
+ax.view_init(elev=0, azim=0)
 ax.set_title(
     "$r_f$, $v_f$: [%.3f m, %.3f m/s]  - $\Delta V$: %.3f m/s "
     % (rf, vf, dV),
     y=1,
     pad=30,
 )
-ax.view_init(elev=90, azim=0)
 plt.savefig(".\OCP2.pdf")
 
 # Thrust plot

@@ -81,7 +81,7 @@ check_env(env)
 # Start learning
 call_back = CallBack(env)
 model = PPO.load(
-    "ppo_mlp1",
+    "ppo_mlp",
     print_system_info=True,
     custom_objects={"learning_rate": 5 * 1e-5},
     # tensorboard_log=f"tensorboard\RecurrentPPO_1",
@@ -93,15 +93,15 @@ model.learn(total_timesteps=2000000, progress_bar=True, callback=call_back)
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_mlp1extra")  # TODO: attento al nome qua
+model.save("ppo_mlpTLextra")  # TODO: attento al nome qua
 
-'''
+
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = PPO.load("ppo_mlp2")
+model = PPO.load("ppo_mlpTLextra")
 obs = env.reset()
 
 # Trajectory propagation
@@ -125,11 +125,20 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[:, 6:9] * l_star
-velocity = obs_vec[:, 9:12] * l_star / t_star
-mass = obs_vec[:, 12] * m_star
-thrust = actions_vec * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt) + 1)[0:len(position)]
+position = obs_vec[1:-1, 6:9] * l_star
+velocity = obs_vec[1:-1, 9:12] * l_star / t_star
+mass = obs_vec[1:-1, 12] * m_star
+thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
+t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
+
+# Approach Corridor
+len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
+rad_kso = rho_max + len_cut
+rad_entry = np.tan(ang_corr) * rad_kso
+x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
+y_cone = np.sqrt((x_cone**2 + z_cone**2) / np.square(np.tan(ang_corr))) - len_cut
+y_cone = np.where(y_cone > 0.8 * rho_max, np.nan, y_cone)
+y_cone = np.where(y_cone < 0, np.nan, y_cone)
 
 # Plot full trajectory ONCE
 plt.close()
@@ -163,6 +172,7 @@ plt.legend(
     scatterpoints=1,
     loc="upper right",
 )
+ax.plot_surface(x_cone, y_cone, z_cone, color="k", alpha=0.1)
 ax.set_xlabel("$\delta x$ [m]", labelpad=15)
 plt.xticks([0])
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
@@ -177,9 +187,9 @@ ax.zaxis.pane.set_edgecolor("black")
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
-# ax.set_aspect("auto")
+ax.set_aspect("equal", "box")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\Trajectory2.pdf")  # Save
+plt.savefig("plots\TrajectoryTLextra.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -188,7 +198,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\Velocity2.pdf")  # Save
+plt.savefig("plots\VelocityTLextra.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -197,7 +207,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\Position2.pdf")  # Save
+plt.savefig("plots\PositionTLextra.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -206,7 +216,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\Mass2.pdf")  # Save
+plt.savefig("plots\MassTLextra.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -234,7 +244,7 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\Thrust2.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\ThrustTLextra.pdf", bbox_inches="tight")  # Save
 
 # Plot angular velocity
 dTdt_ver = np.zeros([len(t), 3])
@@ -252,5 +262,5 @@ plt.plot(t, w_ang, c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVel2.pdf")  # Save
-'''
+plt.savefig("plots\AngVelTLextra.pdf")  # Save
+

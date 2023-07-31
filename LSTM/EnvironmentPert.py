@@ -43,8 +43,7 @@ class ArpodCrtbp(gym.Env):
         self.Told = np.zeros(3)
         self.randomc = random.choice([1, 2, 3, 4])
         self.randomT = np.ones(3)
-        self.failure = 0.25
-        self.dyn_uncertainty = 1e-9  # OSS: 1e-6 / mass  [adim]
+        self.failure = 0.5
         if self.randomc != 4:
             self.randomT[self.randomc - 1] = self.failure
 
@@ -124,28 +123,27 @@ class ArpodCrtbp(gym.Env):
     def step(self, action):
         # RELATIVE CRT3BP
         def rel_crtbp(
-            t,
-            x,
-            T,
-            mu=0.012150583925359,
-            spec_impulse=310 / self.t_star,
-            g0=9.81 / (self.l_star / self.t_star**2),
+                t,
+                x,
+                T,
+                mu=0.012150583925359,
+                spec_impulse=310 / self.t_star,
+                g0=9.81 / (self.l_star / self.t_star ** 2),
         ):
             """
-                        Circular Restricted Three-Body Problem Dynamics
-            :
-                        :param t: time
-                        :param x: State, vector 13x1
-                        :param T: Thrust action
-                        :param mu: Gravitational constant, scalar
-                        :param spec_impulse: Specific impulse
-                        :param g0: Constant
-                        :return: State Derivative, vector 6x1
+              Circular Restricted Three-Body Problem Dynamics with 4B
+
+            :param t: time
+                                  :param x: State, vector 13x1
+                                  :param T: Thrust action
+                                  :param mu: Gravitational constant, scalar
+                                  :param spec_impulse: Specific impulse
+                                  :param g0: Constant
+                                  :return: State Derivative, vector 6x1
             """
 
             # Initialize ODE
             dxdt = np.zeros((13,))
-            std = self.dyn_uncertainty
             # Initialize Target State
             xt = x[0]
             yt = x[1]
@@ -153,13 +151,14 @@ class ArpodCrtbp(gym.Env):
             xtdot = x[3]
             ytdot = x[4]
             ztdot = x[5]
-            # Initialize Relative State
-            xr = x[6]
-            yr = x[7]
-            zr = x[8]
-            xrdot = x[9]
-            yrdot = x[10]
-            zrdot = x[11]
+            # Initialize Chaser State
+            xc = x[6] + xt
+            yc = x[7] + yt
+            zc = x[8] + zt
+            xcdot = x[9] + xtdot
+            ycdot = x[10] + ytdot
+            zcdot = x[11] + ztdot
+
             # Initial Mass Target
             m = x[12]
             # Initialize Thrust action
@@ -168,71 +167,77 @@ class ArpodCrtbp(gym.Env):
             Tz = T[2]
             T_norm = np.linalg.norm(T)
 
-            # Relative CRTBP Dynamics
-            r1t = [xt + mu, yt, zt]
-            r2t = [xt + mu - 1, yt, zt]
-            r1t_norm = np.sqrt((xt + mu) ** 2 + yt**2 + zt**2)
-            r2t_norm = np.sqrt((xt + mu - 1) ** 2 + yt**2 + zt**2) + t * 0
-            rho = [xr, yr, zr]
+            # CRTBP relative dynamics
+            r1t_norm = (
+                    np.sqrt((xt + mu) ** 2 + yt ** 2 + zt ** 2) + t * 0
+            )  # JUST TO REMOVE ERROR IN T
+            r2t_norm = np.sqrt((xt + mu - 1) ** 2 + yt ** 2 + zt ** 2)
+            r1c_norm = np.sqrt((xc + mu) ** 2 + yc ** 2 + zc ** 2)
+            r2c_norm = np.sqrt((xc + mu - 1) ** 2 + yc ** 2 + zc ** 2)
 
-            # Target Equations
+            # BRFBP additional values and components
+            ms = 3.28900541 * 1e5
+            ws = - 9.25195985 * 1e-1
+            rho = 3.88811143 * 1e2
+            rho_vec = rho * np.array([np.cos(ws * t), np.sin(ws * t), 0])
+            r3t = np.sqrt((xt - rho * np.cos(ws * t)) ** 2 + (yt - rho * np.sin(ws * t)) ** 2 + zt ** 2)
+            dxdt4t = (
+                    -ms * (xt - rho * np.cos(ws * t)) / r3t ** 3 - ms * np.cos(ws * t) / rho ** 2
+            )
+            dxdt5t = (
+                    -ms * (yt - rho * np.sin(ws * t)) / r3t ** 3 - ms * np.sin(ws * t) / rho ** 2
+            )
+            dxdt6t = - ms * zt / r3t ** 3
+            r3c = np.sqrt((xc - rho * np.cos(ws * t)) ** 2 + (yc - rho * np.sin(ws * t)) ** 2 + zc ** 2)
+            dxdt4c = (
+                    -ms * (xc - rho * np.cos(ws * t)) / r3c ** 3 - ms * np.cos(ws * t) / rho ** 2
+            )
+            dxdt5c = (
+                    -ms * (yc - rho * np.sin(ws * t)) / r3c ** 3 - ms * np.sin(ws * t) / rho ** 2
+            )
+            dxdt6c = - ms * zc / r3c ** 3
+
+            # SRP additional values and components
+            P = 4.56 * 1e-6 / (self.m_star * self.l_star / self.t_star ** 2) * self.l_star ** 2  # OSS: N x m^-2
+            Cr = 1
+            A = 1 / self.l_star ** 2
+            dist_coeff = 1
+            a_srp = - (Cr * A * P * dist_coeff / m) * rho_vec
+
             dxdt[0:3] = [xtdot, ytdot, ztdot]
             dxdt[3:6] = [
                 2 * ytdot
                 + xt
-                - (1 - mu) * (xt + mu) / r1t_norm**3
-                - mu * (xt + mu - 1) / r2t_norm**3,
+                - (1 - mu) * (xt + mu) / r1t_norm ** 3
+                - mu * (xt + mu - 1) / r2t_norm ** 3
+                + dxdt4t,
                 -2 * xtdot
                 + yt
-                - (1 - mu) * yt / r1t_norm**3
-                - mu * yt / r2t_norm**3,
-                -(1 - mu) * zt / r1t_norm**3 - mu * zt / r2t_norm**3,
+                - (1 - mu) * yt / r1t_norm ** 3
+                - mu * yt / r2t_norm ** 3
+                + dxdt5t,
+                -(1 - mu) * zt / r1t_norm ** 3 - mu * zt / r2t_norm ** 3 + dxdt6t,
             ]
 
-            # Chaser relative equations
-            dxdt[6:9] = [xrdot, yrdot, zrdot]
-            dxdt[9:12] = [
-                2 * yrdot
-                + xr
-                + (1 - mu)
-                * (
-                    (xt + mu) / r1t_norm**3
-                    - (xt + xr + mu) / np.linalg.norm(np.add(r1t, rho)) ** 3
-                )
-                + mu
-                * (
-                    (xt + mu - 1) / r2t_norm**3
-                    - (xt + xr + mu - 1) / np.linalg.norm(np.add(r2t, rho)) ** 3
-                )
-                + Tx / m
-                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
-                -2 * xrdot
-                + yr
-                + (1 - mu)
-                * (
-                    yt / r1t_norm**3
-                    - (yt + yr) / np.linalg.norm(np.add(r1t, rho)) ** 3
-                )
-                + mu
-                * (
-                    yt / r2t_norm**3
-                    - (yt + yr) / np.linalg.norm(np.add(r2t, rho)) ** 3
-                )
-                + Ty / m
-                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
-                (1 - mu)
-                * (
-                    zt / r1t_norm**3
-                    - (zt + zr) / np.linalg.norm(np.add(r1t, rho)) ** 3
-                )
-                + mu
-                * (
-                    zt / r2t_norm**3
-                    - (zt + zr) / np.linalg.norm(np.add(r2t, rho)) ** 3
-                )
-                + Tz / m
-                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
-            ]
+            dxdt[6:9] = np.subtract([xcdot, ycdot, zcdot], dxdt[0:3])
+            dxdt[9:12] = np.subtract(  # TODO: togliere pert target?
+                [
+                    2 * ycdot  # TODO: unità sono giuste?
+                    + xc
+                    - (1 - mu) * (xc + mu) / r1c_norm ** 3
+                    - mu * (xc + mu - 1) / r2c_norm ** 3
+                    + Tx / m
+                    + dxdt4c + a_srp[0],
+                    -2 * xcdot
+                    + yc
+                    - (1 - mu) * yc / r1c_norm ** 3
+                    - mu * yc / r2c_norm ** 3
+                    + Ty / m
+                    + dxdt5c + a_srp[1],
+                    -(1 - mu) * zc / r1c_norm ** 3 - mu * zc / r2c_norm ** 3 + Tz / m + dxdt6c + a_srp[2],
+                ],
+                dxdt[3:6],
+            )
             dxdt[12] = -T_norm / (spec_impulse * g0)
 
             return dxdt

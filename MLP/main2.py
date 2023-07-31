@@ -97,7 +97,7 @@ model = PPO(
 print(model.policy)
 
 # Start learning
-call_back = CallBack(env)
+# call_back = CallBack(env)
 # model.learn(total_timesteps=6000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
@@ -140,6 +140,15 @@ mass = obs_vec[1:-1, 12] * m_star
 thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
 t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
 
+# Approach Corridor
+len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
+rad_kso = rho_max + len_cut
+rad_entry = np.tan(ang_corr) * rad_kso
+x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
+y_cone = np.sqrt((x_cone**2 + z_cone**2) / np.square(np.tan(ang_corr))) - len_cut
+y_cone = np.where(y_cone > 0.8 * rho_max, np.nan, y_cone)
+y_cone = np.where(y_cone < 0, np.nan, y_cone)
+
 # Plot full trajectory ONCE
 plt.close()
 plt.figure()
@@ -172,6 +181,7 @@ plt.legend(
     scatterpoints=1,
     loc="upper right",
 )
+ax.plot_surface(x_cone, y_cone, z_cone, color="k", alpha=0.1)
 ax.set_xlabel("$\delta x$ [m]", labelpad=15)
 plt.xticks([0])
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
@@ -186,7 +196,7 @@ ax.zaxis.pane.set_edgecolor("black")
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
-# ax.set_aspect("auto")
+ax.set_aspect("equal", "box")
 ax.view_init(elev=0, azim=0)
 plt.savefig("plots\Trajectory2.pdf")  # Save
 

@@ -12,8 +12,10 @@ from CallBack import CallBack
 def lrsched():
     def reallr(progress):
         lr = 0.00005
-        if progress < 0.75:
+        if progress < 0.15:
             lr = 0.00001
+        if progress < 0.05:
+            lr = 0.000005
         return lr
     return reallr
 
@@ -25,7 +27,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 80  # TODO: da ridurre per semplificare training
+ToF = 100
 batch_size = 64
 
 rho_max = 70
@@ -96,7 +98,7 @@ model = RecurrentPPO(
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
     learning_rate=lrsched(),
-    gamma=0.99,  # TODO: perchè ora sembra non andare più?
+    gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,  # TODO: hai ancora un problema di stabilità, sistema con lr 2.5*1e-5?
     max_grad_norm=0.1,
@@ -110,7 +112,7 @@ print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -156,6 +158,15 @@ mass = obs_vec[1:-1, 12] * m_star
 thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
 t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
 
+# Approach Corridor
+len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
+rad_kso = rho_max + len_cut
+rad_entry = np.tan(ang_corr) * rad_kso
+x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
+y_cone = np.sqrt((x_cone**2 + z_cone**2) / np.square(np.tan(ang_corr))) - len_cut
+y_cone = np.where(y_cone > 0.8 * rho_max, np.nan, y_cone)
+y_cone = np.where(y_cone < 0, np.nan, y_cone)
+
 # Plot full trajectory ONCE
 plt.close()
 plt.figure()
@@ -171,7 +182,7 @@ start = ax.scatter(
     position[0, 0],
     position[0, 1],
     position[0, 2],
-    color="blue",
+    color="blue",  # TODO: assicurati di non aver rovinato plot o salvataggi
     marker="s",
 )
 stop = ax.scatter(
@@ -188,6 +199,7 @@ plt.legend(
     scatterpoints=1,
     loc="upper right",
 )
+ax.plot_surface(x_cone, y_cone, z_cone, color="k", alpha=0.1)
 ax.set_xlabel("$\delta x$ [m]", labelpad=15)
 plt.xticks([0])
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
@@ -202,9 +214,9 @@ ax.zaxis.pane.set_edgecolor("black")
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
-# ax.set_aspect("auto")
+ax.set_aspect("equal", "box")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\Trajectory1.pdf")  # Save
+plt.savefig("plots\Trajectory.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -213,7 +225,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\Velocity1.pdf")  # Save
+plt.savefig("plots\Velocity.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -222,7 +234,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\Position1.pdf")  # Save
+plt.savefig("plots\Position.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -231,7 +243,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\Mass1.pdf")  # Save
+plt.savefig("plots\Mass.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -259,7 +271,7 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\Thrust1.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\Thrust.pdf", bbox_inches="tight")  # Save
 
 # Plot angular velocity
 dTdt_ver = np.zeros([len(t), 3])
@@ -277,6 +289,56 @@ plt.plot(t[1:-1], w_ang[1:-1], c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVel1.pdf")  # Save
+plt.savefig("plots\AngVel.pdf")  # Save
 
-# TODO: perchè l'ultimo mcm ha sminchiato? controlla differenze con questo e ultimi logger prima di chiudere
+# Stability Analysis
+omega = 2.91 + 1e-6
+rho = np.zeros(len(t) - 1)
+rhodot = np.zeros(len(t) - 1)
+V = np.zeros(len(t) - 1)
+dVdT = np.zeros(len(t[0:-1]))
+for i in range(len(t) - 1):
+    Rot_z = np.array(
+        [
+            [np.cos(omega * t[i + 1]), -np.sin(omega * t[i + 1]), 0],
+            [np.sin(omega * t[i + 1]), np.cos(omega * t[i + 1]), 0],
+            [0, 0, 1],
+        ]
+    )
+    rho[i] = (
+        np.linalg.norm(np.matmul(Rot_z, (position[i] + obs_vec[i + 1, 0:3]))) * l_star
+    )
+    rhodot[i] = (
+        np.linalg.norm(np.matmul(Rot_z, (velocity[i] + obs_vec[i + 1, 3:6])))
+        * l_star
+        / t_star
+    )
+    V[i] = 0.5 * ((rho[i] ** 2 + rhodot[i] ** 2))
+V = (V - np.min(V))
+for i in range(len(t) - 2):
+    dVdT[i] = (V[i + 1] - V[i]) / dt
+plt.close()
+plt.figure(4)
+plt.plot(
+    (rho**2 + rho**2) / 1e22,
+    V / 1e20,
+    c="r",
+    linewidth=2,
+)
+plt.grid(True)
+plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
+plt.ylabel("$V \cdot 10^{-20}$ [-]")
+plt.savefig("plots\V.pdf")
+plt.figure(5)
+plt.plot(
+    (rho**2 + rho**2) / 1e22,
+    dVdT / 1e20,
+    c="b",
+    linewidth=2,
+)
+plt.grid(True)
+plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
+plt.ylabel("$\dot{V} \cdot 10^{-20}$ [-]")
+plt.savefig("plots\Vdot.pdf")
+plt.show()
+

@@ -1,10 +1,9 @@
 # Import libraries
 import numpy as np
-from sb3_contrib import RecurrentPPO
-from Environment import ArpodCrtbp
+from stable_baselines3 import PPO
+from EnvironmentPert import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
-import time
 
 # DEFINITIONS
 # Data and initialization
@@ -81,18 +80,19 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent2best")
+model = PPO.load("ppo_mlp2Best")
 print(model.policy)
 
 # Trajectory propagation
 num_episode_MCM = 500
 num_ep = 0
 docked = np.zeros(num_episode_MCM)
-posfin_mean, posfin_std = 0, 0
-velfin_mean, velfin_std = 0, 0
-dv_mean, dv_std = 0, 0
-ToF_mean, ToF_std = 0, 0
-tc_mean, tc_std = 0, 0
+posfin_mean = 0
+posfin_std = 0
+velfin_mean = 0
+velfin_std = 0
+dv_mean = 0
+dv_std = 0
 
 # Approach Corridor: truncated cone + cylinder
 len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
@@ -113,18 +113,15 @@ for num_ep in range(num_episode_MCM):
     # Initialization
     obs = env.reset()
     obs_vec = env.scaler_reverse_observation(obs)
-    lstm_states = None
     done = True
 
     # Propagation
     while True:
         # Action sampling and propagation
-        t1 = time.perf_counter()
-        action, lstm_states = model.predict(
-            obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
+        action, _states = model.predict(
+            obs, deterministic=True
         )  # OSS: Episode start signals are used to reset the lstm states
         obs, rewards, done, info = env.step(action)
-        tc = time.perf_counter() - t1
 
         # Saving
         obs_vec = np.vstack((obs_vec, env.scaler_reverse_observation(obs)))
@@ -144,9 +141,8 @@ for num_ep in range(num_episode_MCM):
         linewidth=2,
     )
 
-    # DV and ToF Computation
+    # DV Computation
     dv = Isp * g0 * np.log(obs_vec[0, 12] / obs_vec[-1, 12])
-    ToF = len(obs_vec) * dt
 
     # Check RVD (OSS: it happens at the end)
     if info.get("Episode success") == "docked":
@@ -157,15 +153,13 @@ for num_ep in range(num_episode_MCM):
         posfin_mean = np.linalg.norm(obs_vec[-1, 6:9])
         velfin_mean = np.linalg.norm(obs_vec[-1, 9:12])
         dv_mean = dv
-        tc_mean = tc
-        ToF_mean = ToF
-        posfin_std, velfin_std, dv_std, tc_std, ToF_std = 0, 0, 0, 0, 0
+        posfin_std = 0
+        velfin_std = 0
+        dv_std = 0
     else:
         posfin_mean = np.mean([posfin_mean, np.linalg.norm(obs_vec[-1, 6:9])])
         velfin_mean = np.mean([velfin_mean, np.linalg.norm(obs_vec[-1, 9:12])])
-        dv_mean = np.mean([dv_mean, dv])
-        tc_mean = np.mean([tc_mean, tc])
-        ToF_mean = np.mean([ToF_mean, ToF])
+        dv_min = np.mean([dv_mean, dv])
         posfin_std = np.std(
             [
                 posfin_mean + posfin_std,
@@ -187,20 +181,7 @@ for num_ep in range(num_episode_MCM):
                 dv,
             ]
         )
-        tc_std = np.std(
-            [
-                tc_mean + tc_std,
-                tc_mean - tc_std,
-                tc,
-            ]
-        )
-        ToF_std = np.std(
-            [
-                ToF_mean + ToF_std,
-                ToF_mean - ToF_std,
-                ToF,
-            ]
-        )
+
 
 # Re-scaling and other Statistics
 posfin_mean = posfin_mean * l_star
@@ -208,10 +189,6 @@ posfin_std = posfin_std * l_star
 velfin_mean = velfin_mean * l_star / t_star
 velfin_std = velfin_std * l_star / t_star
 prob_RVD = docked.sum() * 100 / num_episode_MCM
-
-# Print Info
-print("ToF mean and standard deviation:", ToF_mean, ",", ToF_std)
-print("Computational cost mean and standard deviation:", tc_mean, ",", tc_std)
 
 # Plot full trajectory statistics
 goal = ax.scatter(0, 0, 0, color="red", marker="^", label="Target")
@@ -248,5 +225,5 @@ ax.set_title(
     y=1,
     pad=-3,
 )
-plt.savefig("plots\MCM_Trajectory2.pdf")  # Save
+plt.savefig("plots\MCM_TrajectoryPert2.pdf")  # Save
 plt.show()

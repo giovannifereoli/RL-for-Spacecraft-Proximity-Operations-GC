@@ -1,7 +1,7 @@
 # Import libraries
 import numpy as np
 from sb3_contrib import RecurrentPPO
-from EnvironmentExtra import ArpodCrtbp
+from EnvironmentPert import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
 import time
@@ -81,7 +81,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrentTL")
+model = RecurrentPPO.load("ppo_recurrentBest")
 print(model.policy)
 
 # Trajectory propagation
@@ -248,5 +248,5 @@ ax.set_title(
     y=1,
     pad=-3,
 )
-plt.savefig("plots\MCM_TrajectoryExtra.pdf")  # Save
+plt.savefig("plots\MCM_TrajectoryPert.pdf")  # Save
 plt.show()

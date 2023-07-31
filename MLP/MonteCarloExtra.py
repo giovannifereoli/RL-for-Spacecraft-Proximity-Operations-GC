@@ -80,7 +80,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = PPO.load("ppo_mlp1")
+model = PPO.load("ppo_mlp")
 print(model.policy)
 
 # Trajectory propagation

@@ -14,7 +14,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200  # TODO: abbassa questo, meno lr, piu batch, piu stabile etc --> lr scheduler e piu step, devi ottenere migliore convergenze
+ToF = 100
 batch_size = 64
 
 rho_max = 270
@@ -59,7 +59,7 @@ x0ivp_std_vec = np.absolute(
             20 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
-            np.zeros(1)
+            np.zeros(1),
         )
     )
 )
@@ -97,7 +97,7 @@ model = RecurrentPPO(
 print(model.policy)  # OSS: questo dovrebbe andare 8M e l'altro 4M
 
 # Start learning
-call_back = CallBack(env)
+# call_back = CallBack(env)
 # model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
@@ -110,7 +110,7 @@ call_back = CallBack(env)
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent2")
+model = RecurrentPPO.load("ppo_recurrent2best")
 obs = env.reset()
 
 # Trajectory propagation
@@ -142,7 +142,16 @@ position = obs_vec[1:-1, 6:9] * l_star
 velocity = obs_vec[1:-1, 9:12] * l_star / t_star
 mass = obs_vec[1:-1, 12] * m_star
 thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
+t = np.linspace(0, ToF, int(ToF / dt))[0 : len(position)]
+
+# Approach Corridor
+len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
+rad_kso = rho_max + len_cut
+rad_entry = np.tan(ang_corr) * rad_kso
+x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
+y_cone = np.sqrt((x_cone**2 + z_cone**2) / np.square(np.tan(ang_corr))) - len_cut
+y_cone = np.where(y_cone > 0.8 * rho_max, np.nan, y_cone)
+y_cone = np.where(y_cone < 0, np.nan, y_cone)
 
 # Plot full trajectory ONCE
 plt.close()
@@ -176,6 +185,7 @@ plt.legend(
     scatterpoints=1,
     loc="upper right",
 )
+ax.plot_surface(x_cone, y_cone, z_cone, color="k", alpha=0.1)
 ax.set_xlabel("$\delta x$ [m]", labelpad=15)
 plt.xticks([0])
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
@@ -190,7 +200,7 @@ ax.zaxis.pane.set_edgecolor("black")
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
-# ax.set_aspect("auto")
+ax.set_aspect("equal", "box")
 ax.view_init(elev=0, azim=0)
 plt.savefig("plots\Trajectory2.pdf")  # Save
 
@@ -267,3 +277,53 @@ plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
 plt.savefig("plots\AngVel2.pdf")  # Save
 
+# Stability Analysis
+omega = 2.91 + 1e-6
+rho = np.zeros(len(t) - 1)
+rhodot = np.zeros(len(t) - 1)
+V = np.zeros(len(t) - 1)
+dVdT = np.zeros(len(t[0:-1]))
+for i in range(len(t) - 1):
+    Rot_z = np.array(
+        [
+            [np.cos(omega * t[i + 1]), -np.sin(omega * t[i + 1]), 0],
+            [np.sin(omega * t[i + 1]), np.cos(omega * t[i + 1]), 0],
+            [0, 0, 1],
+        ]
+    )
+    rho[i] = (
+        np.linalg.norm(np.matmul(Rot_z, (position[i] + obs_vec[i + 1, 0:3]))) * l_star
+    )
+    rhodot[i] = (
+        np.linalg.norm(np.matmul(Rot_z, (velocity[i] + obs_vec[i + 1, 3:6])))
+        * l_star
+        / t_star
+    )
+    V[i] = 0.5 * ((rho[i] ** 2 + rhodot[i] ** 2))
+V = (V - np.min(V))
+for i in range(len(t) - 2):
+    dVdT[i] = (V[i + 1] - V[i]) / dt
+plt.close()
+plt.figure(4)
+plt.plot(
+    (rho**2 + rho**2) / 1e22,
+    V / 1e20,
+    c="r",
+    linewidth=2,
+)
+plt.grid(True)
+plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
+plt.ylabel("$V \cdot 10^{-20}$ [-]")
+plt.savefig("plots\V2.pdf")
+plt.figure(5)
+plt.plot(
+    (rho**2 + rho**2) / 1e22,
+    dVdT / 1e20,
+    c="b",
+    linewidth=2,
+)
+plt.grid(True)
+plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
+plt.ylabel("$\dot{V} \cdot 10^{-20}$ [-]")
+plt.savefig("plots\Vdot2.pdf")
+plt.show()

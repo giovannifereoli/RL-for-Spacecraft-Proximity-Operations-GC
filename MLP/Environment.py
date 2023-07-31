@@ -44,7 +44,7 @@ class ArpodCrtbp(gym.Env):
         self.randomc = random.choice([1, 2, 3, 4])
         self.randomT = np.ones(3)
         self.failure = 0.5
-        self.dyn_uncertainty = 1e-10  # OSS: 1e-6 / mass  [adim]
+        self.dyn_uncertainty = 1e-4  # OSS: 1e-6 / mass  [adim]
         if self.randomc != 4:
             self.randomT[self.randomc - 1] = self.failure
 
@@ -205,7 +205,7 @@ class ArpodCrtbp(gym.Env):
                     - (xt + xr + mu - 1) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Tx / m
-                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
+                + np.random.normal(0, std / (self.l_star / self.t_star**2)),
                 -2 * xrdot
                 + yr
                 + (1 - mu)
@@ -219,7 +219,7 @@ class ArpodCrtbp(gym.Env):
                     - (yt + yr) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Ty / m
-                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
+                + np.random.normal(0, std / (self.l_star / self.t_star**2)),
                 (1 - mu)
                 * (
                     zt / r1t_norm**3
@@ -231,7 +231,7 @@ class ArpodCrtbp(gym.Env):
                     - (zt + zr) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Tz / m
-                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
+                + np.random.normal(0, std / (self.l_star / self.t_star**2)),
             ]
             dxdt[12] = -T_norm / (spec_impulse * g0)
 
