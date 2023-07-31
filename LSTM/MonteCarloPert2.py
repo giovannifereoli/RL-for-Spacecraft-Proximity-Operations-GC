@@ -81,7 +81,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent2best")
+model = RecurrentPPO.load("ppo_recurrent2")
 print(model.policy)
 
 # Trajectory propagation

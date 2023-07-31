@@ -220,9 +220,9 @@ class ArpodCrtbp(gym.Env):
             ]
 
             dxdt[6:9] = np.subtract([xcdot, ycdot, zcdot], dxdt[0:3])
-            dxdt[9:12] = np.subtract(  # TODO: togliere pert target?
+            dxdt[9:12] = np.subtract(
                 [
-                    2 * ycdot  # TODO: unità sono giuste?
+                    2 * ycdot    # TODO: le unità sono giuste?
                     + xc
                     - (1 - mu) * (xc + mu) / r1c_norm ** 3
                     - mu * (xc + mu - 1) / r2c_norm ** 3

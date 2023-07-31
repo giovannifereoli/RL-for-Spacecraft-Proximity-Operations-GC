@@ -81,13 +81,14 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent2best")
+model = RecurrentPPO.load("ppo_recurrentBest2")
 print(model.policy)
 
 # Trajectory propagation
 num_episode_MCM = 500
 num_ep = 0
 docked = np.zeros(num_episode_MCM)
+dt_cost = 0
 posfin_mean, posfin_std = 0, 0
 velfin_mean, velfin_std = 0, 0
 dv_mean, dv_std = 0, 0
@@ -123,11 +124,12 @@ for num_ep in range(num_episode_MCM):
         action, lstm_states = model.predict(
             obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
         )  # OSS: Episode start signals are used to reset the lstm states
-        obs, rewards, done, info = env.step(action)
         tc = time.perf_counter() - t1
+        obs, rewards, done, info = env.step(action)
 
         # Saving
         obs_vec = np.vstack((obs_vec, env.scaler_reverse_observation(obs)))
+        dt_cost = np.vstack((dt_cost, tc))
 
         # Stop
         if done:
@@ -249,4 +251,24 @@ ax.set_title(
     pad=-3,
 )
 plt.savefig("plots\MCM_Trajectory2.pdf")  # Save
+
+plt.figure(2)
+plt.semilogy(
+    np.linspace(0, len(dt_cost), len(dt_cost)),
+    dt_cost,
+    c="r",
+    linewidth=2,
+)
+plt.semilogy(
+    np.linspace(0, len(dt_cost), len(dt_cost)),
+    tc_mean * np.ones(len(dt_cost)),
+    c="b",
+    linewidth=2,
+    linestyle="dashed"
+)
+plt.legend(["CPU Time", "Mean CPU Time"])
+plt.grid(True)
+plt.xlabel("Sample Step [-]")
+plt.ylabel("Computational Cost [s]")
+plt.savefig("plots\Cost2.pdf")
 plt.show()

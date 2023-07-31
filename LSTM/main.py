@@ -11,8 +11,8 @@ from CallBack import CallBack
 # FUNCTION lrsched()
 def lrsched():
     def reallr(progress):
-        lr = 0.00005
-        if progress < 0.15:
+        lr = 0.00005   # TODO: provare lr = 0.000025
+        if progress < 0.10:
             lr = 0.00001
         if progress < 0.05:
             lr = 0.000005
@@ -112,7 +112,7 @@ print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -313,7 +313,7 @@ for i in range(len(t) - 1):
         * l_star
         / t_star
     )
-    V[i] = 0.5 * ((rho[i] ** 2 + rhodot[i] ** 2))
+    V[i] = 0.5 * (rho[i] ** 2 + rhodot[i] ** 2)
 V = (V - np.min(V))
 for i in range(len(t) - 2):
     dVdT[i] = (V[i + 1] - V[i]) / dt

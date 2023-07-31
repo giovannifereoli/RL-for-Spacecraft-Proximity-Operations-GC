@@ -26,11 +26,11 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 100
+ToF = 300
 batch_size = 64
 
-rho_max = 270
-rhodot_max = 20
+rho_max = 1500
+rhodot_max = 30
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
@@ -44,21 +44,21 @@ actions_space = 3
 x0t_state = np.array(
     [
         1.02206694e00,
-        -5.25240280e-07,
+        -2.61552389e-06,
         -1.82100000e-01,
-        -6.71943026e-07,
+        -3.34605533e-06,
         -1.03353155e-01,
-        2.55711651e-06,
+        1.27335994e-05,
     ]
-)  # 9:2 NRO - 200m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
+)  # 9:2 NRO - 1000m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
     [
-        1.70730097e-12,
-        5.25240280e-07,
-        -6.49763576e-12,
-        6.71943026e-07,
-        -5.76798331e-12,
-        -2.55711651e-06,
+        4.23387991e-11,
+        2.61552389e-06,
+        -1.61122476e-10,
+        3.34605533e-06,
+        -1.43029505e-10,
+        -1.27335994e-05,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -68,7 +68,7 @@ x0ivp_std_vec = np.absolute(
     np.concatenate(
         (
             np.zeros(6),
-            20 * np.ones(3) / l_star,
+            100 * np.ones(3) / l_star,
             0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1),
@@ -110,19 +110,19 @@ print(model.policy)  # OSS: questo dovrebbe andare 8M e l'altro 4M
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=12000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_recurrent2")
+model.save("ppo_recurrent3")
 
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent2")
+model = RecurrentPPO.load("ppo_recurrent3")
 obs = env.reset()
 
 # Trajectory propagation
@@ -214,7 +214,7 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.set_aspect("equal", "box")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\Trajectory2.pdf")  # Save
+plt.savefig("plots\Trajectory3.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -223,7 +223,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\Velocity2.pdf")  # Save
+plt.savefig("plots\Velocity3.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -232,7 +232,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\Position2.pdf")  # Save
+plt.savefig("plots\Position3.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -241,7 +241,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\Mass2.pdf")  # Save
+plt.savefig("plots\Mass3.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -269,7 +269,7 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\Thrust2.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\Thrust3.pdf", bbox_inches="tight")  # Save
 
 # Plot angular velocity
 dTdt_ver = np.zeros([len(t), 3])
@@ -287,7 +287,7 @@ plt.plot(t, w_ang, c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVel2.pdf")  # Save
+plt.savefig("plots\AngVel3.pdf")  # Save
 
 # Stability Analysis
 omega = 2.91 + 1e-6
@@ -311,7 +311,7 @@ for i in range(len(t) - 1):
         * l_star
         / t_star
     )
-    V[i] = 0.5 * ((rho[i] ** 2 + rhodot[i] ** 2))
+    V[i] = 0.5 * (rho[i] ** 2 + rhodot[i] ** 2)
 V = (V - np.min(V))
 for i in range(len(t) - 2):
     dVdT[i] = (V[i + 1] - V[i]) / dt
@@ -326,7 +326,7 @@ plt.plot(
 plt.grid(True)
 plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
 plt.ylabel("$V \cdot 10^{-20}$ [-]")
-plt.savefig("plots\V2.pdf")
+plt.savefig("plots\V3.pdf")
 plt.figure(5)
 plt.plot(
     (rho**2 + rho**2) / 1e22,
@@ -337,5 +337,5 @@ plt.plot(
 plt.grid(True)
 plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
 plt.ylabel("$\dot{V} \cdot 10^{-20}$ [-]")
-plt.savefig("plots\Vdot2.pdf")
+plt.savefig("plots\Vdot3.pdf")
 plt.show()

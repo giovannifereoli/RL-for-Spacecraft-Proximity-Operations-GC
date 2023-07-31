@@ -44,7 +44,7 @@ class ArpodCrtbp(gym.Env):
         self.randomc = random.choice([1, 2, 3, 4])
         self.randomT = np.ones(3)
         self.failure = 0.5
-        self.dyn_uncertainty = 1e-4
+        self.dyn_uncertainty = 1e-10  # OSS: in m/s^2  #TODO: fix uncert VS tol
         if self.randomc != 4:
             self.randomT[self.randomc - 1] = self.failure
 

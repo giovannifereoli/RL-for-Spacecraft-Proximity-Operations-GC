@@ -248,7 +248,7 @@ plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
 plt.savefig("plots\Thrust3.pdf", bbox_inches="tight")  # Save
 
-# TODO: lo faccio transfer learning? lo faccio come comparison out of dataset?
+
 
 
 def lrsched():
