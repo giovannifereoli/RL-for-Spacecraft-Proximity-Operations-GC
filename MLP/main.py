@@ -14,7 +14,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200
+ToF = 100
 batch_size = 64
 
 rho_max = 70
@@ -57,7 +57,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             5 * np.ones(3) / l_star,
-            0.5 * np.ones(3) / (l_star / t_star),
+            0.1 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
         )
@@ -97,20 +97,20 @@ model = PPO(
 print(model.policy)
 
 # Start learning
-# call_back = CallBack(env)
-# model.learn(total_timesteps=5500000, progress_bar=True, callback=call_back)
+#call_back = CallBack(env)
+#model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
-# mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
-# print(mean_reward)
-# model.save("ppo_mlp")
+#mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
+#print(mean_reward)
+#model.save("ppo_mlp")
 
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = PPO.load("ppo_mlp")
+model = PPO.load("ppo_mlpBest")
 obs = env.reset()
 
 # Trajectory propagation
@@ -134,10 +134,10 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[1:-1, 6:9] * l_star
-velocity = obs_vec[1:-1, 9:12] * l_star / t_star
-mass = obs_vec[1:-1, 12] * m_star
-thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
+position = obs_vec[1:, 6:9] * l_star
+velocity = obs_vec[1:, 9:12] * l_star / t_star
+mass = obs_vec[1:, 12] * m_star
+thrust = actions_vec[1:, :] * (m_star * l_star / t_star**2)
 t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
 
 # Approach Corridor

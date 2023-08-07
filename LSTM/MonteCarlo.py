@@ -37,7 +37,7 @@ x0t_state = np.array(
         -1.82100000e-01,
         -1.69229909e-07,
         -1.03353155e-01,
-        6.44013821e-07
+        6.44013821e-07,
     ]
 )  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
@@ -47,7 +47,7 @@ x0r_state = np.array(
         -4.12142542e-13,
         1.69229909e-07,
         -3.65860120e-13,
-        -6.44013821e-07
+        -6.44013821e-07,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -58,7 +58,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             5 * np.ones(3) / l_star,
-            0.5 * np.ones(3) / (l_star / t_star),
+            0.1 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
         )
@@ -81,7 +81,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrentBest")
+model = RecurrentPPO.load("ppo_recurrent")
 print(model.policy)
 
 # Trajectory propagation
@@ -106,7 +106,7 @@ y_cone = np.where(y_cone < 0, np.nan, y_cone)
 
 # Plot
 plt.close()
-plt.figure()
+plt.figure(1)
 ax = plt.axes(projection="3d")
 
 # Propagation
@@ -135,11 +135,54 @@ for num_ep in range(num_episode_MCM):
         if done:
             break
 
-    # Plot
+    # Lyapunov function
+    omega = 2.91 + 1e-6
+    position = obs_vec[1:, 6:9] * l_star
+    velocity = obs_vec[1:, 9:12] * l_star / t_star
+    t = np.linspace(0, len(obs_vec) * dt, len(obs_vec))[1:]
+    rho, rhodot, V, dVdT = (
+        np.zeros(len(t) - 1),
+        np.zeros(len(t) - 1),
+        np.zeros(len(t) - 1),
+        np.zeros(len(t[0:-1])),
+    )
+
+    for i in range(len(t) - 1):
+        rho[i] = np.linalg.norm(position[i])
+        rhodot[i] = np.linalg.norm(velocity[i])
+        V[i] = 0.5 * (rho[i] ** 2 + rhodot[i] ** 2)
+    V = V - V[-1]
+    for i in range(len(t) - 2):
+        dVdT[i] = (V[i + 1] - V[i]) / dt
+
+    # Plot Trajectory
+    plt.figure(1)
     traj = ax.plot3D(
         obs_vec[:, 6] * l_star,
         obs_vec[:, 7] * l_star,
         obs_vec[:, 8] * l_star,
+        c=np.random.rand(
+            3,
+        ),
+        linewidth=2,
+    )
+
+    # Plot V
+    plt.figure(2)
+    plt.plot(
+        (rho**2 + rho**2),
+        V,
+        c=np.random.rand(
+            3,
+        ),
+        linewidth=2,
+    )
+
+    # Plot Vdot
+    plt.figure(3)
+    plt.plot(
+        (rho**2 + rho**2),
+        dVdT,
         c=np.random.rand(
             3,
         ),
@@ -216,6 +259,7 @@ print("ToF mean and standard deviation:", ToF_mean, ",", ToF_std)
 print("Computational cost mean and standard deviation:", tc_mean, ",", tc_std)
 
 # Plot full trajectory statistics
+plt.figure(1)
 goal = ax.scatter(0, 0, 0, color="red", marker="^", label="Target")
 app_direction = ax.plot3D(
     np.zeros(100),
@@ -252,7 +296,22 @@ ax.set_title(
 )
 plt.savefig("plots\MCM_Trajectory.pdf")  # Save
 
+# Stability Analysis
 plt.figure(2)
+plt.grid(True)
+plt.xlabel("$\Delta x^*$ [-]")
+plt.ylabel("$V}$ [-]")
+plt.savefig("plots\V.pdf")
+
+plt.figure(3)
+plt.grid(True)
+plt.xlabel("$\Delta x^*$ [-]")
+plt.ylabel("$\dot{V}$ [-]")
+plt.savefig("plots\Vdot.pdf")
+
+
+# Computational Cost
+plt.figure(4)
 plt.semilogy(
     np.linspace(0, len(dt_cost), len(dt_cost)),
     dt_cost,

@@ -89,8 +89,7 @@ def terminal_constraints(x, t, x0, t0):
 ocp = mp.OCP(
     n_states=13,
     n_controls=4,
-    n_phases=1,
-    nlp_solver_options={"ipopt.acceptable_tol": 1e-6, "ipopt.max_iter": 100000}
+    n_phases=1
 )
 ocp.dynamics[0] = dynamics
 ocp.running_costs[0] = running_costs
@@ -112,9 +111,9 @@ ocp.x00[0] = [
     -1.69229909e-07,
     -1.03353155e-01,
     6.44013821e-07,
-    1.08357767e-13,
-    1.32282592e-07,
-    -4.12142542e-13,
+    1.08357767e-13,  # + np.random.normal(0, 5 / l_star),
+    1.32282592e-07,  # + np.random.normal(0, 5 / l_star),
+    -4.12142542e-13,  # + np.random.normal(0, 5 / l_star), # TODO: increementa iterations
     1.69229909e-07,
     -3.65860120e-13,
     -6.44013821e-07,
@@ -146,9 +145,9 @@ ocp.lbx[0] = [
     -81.99561388926969 / (l_star / t_star),
     -105.88740121359594 / (l_star / t_star),
     -881.9954974936014 / (l_star / t_star),
-    -55 / l_star,
-    -55 / l_star,
-    -55 / l_star,
+    - np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
+    - np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
+    - np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
     -5 / (l_star / t_star),
     -5 / (l_star / t_star),
     -5 / (l_star / t_star),
@@ -161,9 +160,9 @@ ocp.ubx[0] = [
     82.13051133777446 / (l_star / t_star),
     1707.5720010497114 / (l_star / t_star),
     881.8822374702228 / (l_star / t_star),
-    55 / l_star,
-    55 / l_star,
-    55 / l_star,
+    np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
+    np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
+    np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
     5 / (l_star / t_star),
     5 / (l_star / t_star),
     5 / (l_star / t_star),
@@ -189,17 +188,17 @@ ocp.scale_x = [
     m_star / 21000
 ]
 ocp.scale_t = t_star / 30
-
 ocp.validate()
-mpo, post = mp.solve(ocp, n_segments=1, poly_orders=4, scheme="LGR", plot=True)
 
+# Solve
+mpo, post = mp.solve(ocp, n_segments=1, poly_orders=4, scheme="LGR", plot=False)
+
+# Post-process
 mp.post_process._INTERPOLATION_NODES_PER_SEG = 200
 x0, u0, t0, _ = post.get_data(phases=0, interpolate=True)
-mp.plt.show()
 t0 = t0 * t_star
 rf = np.sqrt(x0[-1, 6] ** 2 + x0[-1, 7] ** 2 + x0[-1, 8] ** 2) * l_star
 vf = np.sqrt(x0[-1, 9] ** 2 + x0[-1, 10] ** 2 + x0[-1, 11] ** 2) * l_star / t_star
-
 
 # Approach Corridor
 rad_kso = 50
@@ -245,24 +244,7 @@ ax.set_title(
     y=1,
     pad=30,
 )
-ax.view_init(elev=0, azim=0)
 plt.savefig(".\OCP.pdf")
-
-# Thrust plot
-T = 29620
-x = u0
-Tx = T * np.multiply(u0[:, 0], u0[:, 3])
-Ty = T * np.multiply(u0[:, 1], u0[:, 3])
-Tz = T * np.multiply(u0[:, 2], u0[:, 3])
-plt.close()  # Initialize
-plt.figure(3)
-plt.plot(t0, Tx, c="r", linewidth=2, label="Tx")
-plt.plot(t0, Ty, c="b", linewidth=2, label="Ty")
-plt.plot(t0, Tz, c="g", linewidth=2, label="Tz")
-plt.legend()
-plt.grid(True)
-plt.xlabel("Time [s]")
-plt.ylabel("Thrust [N]")
 plt.show()
 
 

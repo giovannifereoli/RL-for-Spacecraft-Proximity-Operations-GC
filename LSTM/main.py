@@ -4,6 +4,10 @@ from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from Environment import ArpodCrtbp
 from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.callbacks import (
+    EvalCallback,
+    StopTrainingOnRewardThreshold,
+)
 import matplotlib.pyplot as plt
 from CallBack import CallBack
 
@@ -11,13 +15,14 @@ from CallBack import CallBack
 # FUNCTION lrsched()
 def lrsched():
     def reallr(progress):
-        lr = 0.00005   # TODO: provare lr = 0.000025
+        lr = 0.00005  # TODO: provare lr = 0.000025
         if progress < 0.10:
             lr = 0.00001
         if progress < 0.05:
             lr = 0.000005
         return lr
-    return reallr
+
+    return reallr  # TODO: ricontrolla tutto
 
 
 # TRAINING
@@ -49,7 +54,7 @@ x0t_state = np.array(
         -1.82100000e-01,
         -1.69229909e-07,
         -1.03353155e-01,
-        6.44013821e-07
+        6.44013821e-07,
     ]
 )  # 9:2 NRO - 50m after apolune, already corrected, rt = 399069639.7170633, vt = 105.88740083894766
 x0r_state = np.array(
@@ -59,7 +64,7 @@ x0r_state = np.array(
         -4.12142542e-13,
         1.69229909e-07,
         -3.65860120e-13,
-        -6.44013821e-07
+        -6.44013821e-07,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -70,9 +75,9 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             5 * np.ones(3) / l_star,
-            0.5 * np.ones(3) / (l_star / t_star),
+            0.1 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
-            np.zeros(1)
+            np.zeros(1),
         )
     )
 )
@@ -87,7 +92,7 @@ env = ArpodCrtbp(
     x0ivp_std=x0ivp_std_vec,
     ang_corr=ang_corr,
     safety_radius=safety_radius,
-    safety_vel=safety_vel
+    safety_vel=safety_vel,
 )
 check_env(env)
 model = RecurrentPPO(
@@ -97,7 +102,7 @@ model = RecurrentPPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=lrsched(),
+    learning_rate=0.00005,
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,  # TODO: hai ancora un problema di stabilità, sistema con lr 2.5*1e-5?
@@ -105,12 +110,19 @@ model = RecurrentPPO(
     ent_coef=1e-3,
     policy_kwargs=dict(n_lstm_layers=2),
     # policy_kwargs=dict(enable_critic_lstm=False, n_lstm_layers=2, optimizer_kwargs=dict(weight_decay=1e-5)),
-    tensorboard_log="./tensorboard/"
+    tensorboard_log="./tensorboard/",
 )
 
 print(model.policy)
 
 # Start learning
+eval_callback = EvalCallback(
+    env,
+    callback_on_new_best=StopTrainingOnRewardThreshold(
+        reward_threshold=2.04, verbose=1
+    ),
+    verbose=1,  # TODO: prova questo o eval
+)
 call_back = CallBack(env)
 model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
 
@@ -152,11 +164,11 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[1:-1, 6:9] * l_star
-velocity = obs_vec[1:-1, 9:12] * l_star / t_star
-mass = obs_vec[1:-1, 12] * m_star
-thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt))[0:len(position)]
+position = obs_vec[1:, 6:9] * l_star
+velocity = obs_vec[1:, 9:12] * l_star / t_star
+mass = obs_vec[1:, 12] * m_star
+thrust = actions_vec[1:, :] * (m_star * l_star / t_star**2)
+t = np.linspace(0, ToF, int(ToF / dt))[0 : len(position)]
 
 # Approach Corridor
 len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
@@ -281,7 +293,7 @@ dTdt_ver = np.diff(thrust / np.linalg.norm(thrust), axis=0) / dt  # Finite diffe
 Tb_ver = np.array([1, 0, 0])
 for i in range(len(w_ang) - 1):  # OSS: T aligned with x-axis body-frame assumptions.
     wy = dTdt_ver[i, 2] / Tb_ver[0]
-    wz = - dTdt_ver[i, 1] / Tb_ver[0]
+    wz = -dTdt_ver[i, 1] / Tb_ver[0]
     w_ang[i + 1] = np.rad2deg(np.linalg.norm(np.array([0, wy, wz])))
 plt.close()  # Initialize
 plt.figure()
@@ -290,55 +302,3 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
 plt.savefig("plots\AngVel.pdf")  # Save
-
-# Stability Analysis
-omega = 2.91 + 1e-6
-rho = np.zeros(len(t) - 1)
-rhodot = np.zeros(len(t) - 1)
-V = np.zeros(len(t) - 1)
-dVdT = np.zeros(len(t[0:-1]))
-for i in range(len(t) - 1):
-    Rot_z = np.array(
-        [
-            [np.cos(omega * t[i + 1]), -np.sin(omega * t[i + 1]), 0],
-            [np.sin(omega * t[i + 1]), np.cos(omega * t[i + 1]), 0],
-            [0, 0, 1],
-        ]
-    )
-    rho[i] = (
-        np.linalg.norm(np.matmul(Rot_z, (position[i] + obs_vec[i + 1, 0:3]))) * l_star
-    )
-    rhodot[i] = (
-        np.linalg.norm(np.matmul(Rot_z, (velocity[i] + obs_vec[i + 1, 3:6])))
-        * l_star
-        / t_star
-    )
-    V[i] = 0.5 * (rho[i] ** 2 + rhodot[i] ** 2)
-V = (V - np.min(V))
-for i in range(len(t) - 2):
-    dVdT[i] = (V[i + 1] - V[i]) / dt
-plt.close()
-plt.figure(4)
-plt.plot(
-    (rho**2 + rho**2) / 1e22,
-    V / 1e20,
-    c="r",
-    linewidth=2,
-)
-plt.grid(True)
-plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
-plt.ylabel("$V \cdot 10^{-20}$ [-]")
-plt.savefig("plots\V.pdf")
-plt.figure(5)
-plt.plot(
-    (rho**2 + rho**2) / 1e22,
-    dVdT / 1e20,
-    c="b",
-    linewidth=2,
-)
-plt.grid(True)
-plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
-plt.ylabel("$\dot{V} \cdot 10^{-20}$ [-]")
-plt.savefig("plots\Vdot.pdf")
-plt.show()
-

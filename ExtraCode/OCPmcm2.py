@@ -85,11 +85,7 @@ def terminal_constraints(x, t, x0, t0):
     return [x[6], x[7], x[8], x[9], x[10], x[11]]
 
 
-ocp = mp.OCP(
-    n_states=13,
-    n_controls=4,
-    n_phases=1
-)
+ocp = mp.OCP(n_states=13, n_controls=4, n_phases=1)
 ocp.dynamics[0] = dynamics
 ocp.running_costs[0] = running_costs
 ocp.terminal_constraints[0] = terminal_constraints
@@ -102,22 +98,7 @@ t_star = 375200  # Seconds
 mass = 21000
 max_thrust = 29620
 
-# Initial state
-ocp.x00[0] = [
-    1.02206694e00,
-    -5.25240280e-07,
-    -1.82100000e-01,
-    -6.71943026e-07,
-    -1.03353155e-01,
-    2.55711651e-06,
-    1.70730097e-12,
-    5.25240280e-07,
-    -6.49763576e-12,
-    6.71943026e-07,
-    -5.76798331e-12,
-    -2.55711651e-06,
-    mass / m_star,
-]
+# Final State
 ocp.xf0[0] = [
     1.02206694e00,
     -5.25240280e-07,
@@ -136,37 +117,7 @@ ocp.xf0[0] = [
 ocp.u00[0], ocp.uf0[0] = [0, -1, 0, 1], [0, 0, 0, 0]
 ocp.t00[0] = 0
 
-# Box constraints
-ocp.lbx[0] = [
-    379548434.40513575 / l_star,
-    -16223383.008425826 / l_star,
-    -70002940.10058032 / l_star,
-    -81.99561388926969 / (l_star / t_star),
-    -105.88740121359594 / (l_star / t_star),
-    -881.9954974936014 / (l_star / t_star),
-    - np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
-    - np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
-    - np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
-    -10 / (l_star / t_star),
-    -10 / (l_star / t_star),
-    -10 / (l_star / t_star),
-    0.8 * mass / m_star,
-]
-ocp.ubx[0] = [
-    392882530.7281463 / l_star,
-    16218212.912172267 / l_star,
-    3248770.078052207 / l_star,
-    82.13051133777446 / (l_star / t_star),
-    1707.5720010497114 / (l_star / t_star),
-    881.8822374702228 / (l_star / t_star),
-    np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
-    np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
-    np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
-    10 / (l_star / t_star),
-    10 / (l_star / t_star),
-    10 / (l_star / t_star),
-    mass / m_star,
-]
+# Box Constraint Pt.1
 ocp.lbu[0], ocp.ubu[0] = [-1, -1, -1, 0], [1, 1, 1, 1]
 ocp.lbtf[0], ocp.ubtf[0] = 70 / t_star, 90 / t_star
 ocp.lbt0[0], ocp.ubt0[0] = 0, 0
@@ -184,40 +135,128 @@ ocp.scale_x = [
     l_star / t_star / 0.5,
     l_star / t_star / 0.5,
     l_star / t_star / 0.5,
-    m_star / 21000
+    m_star / 21000,
 ]
 ocp.scale_t = t_star / 80
-ocp.validate()
 
-# Solve
-mpo, post = mp.solve(ocp, n_segments=1, poly_orders=4, scheme="LGR", plot=False)
-
-# Post-process
-x0, u0, t0, _ = post.get_data(phases=0, interpolate=True)
-t0 = t0 * t_star
-rf = np.sqrt(x0[-1, 6] ** 2 + x0[-1, 7] ** 2 + x0[-1, 8] ** 2) * l_star
-vf = np.sqrt(x0[-1, 9] ** 2 + x0[-1, 10] ** 2 + x0[-1, 11] ** 2) * l_star / t_star
+# Initialization MCM
+num_episode_MCM = 500
+num_ep = 0
+dv = np.NaN
+dv_mean, dv_std = 0, 0
 
 # Approach Corridor
-rad_kso = 200  # TODO: metti cono tagliato
+rad_kso = 200
 ang_corr = np.deg2rad(20)
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, y_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
 z_cone = np.sqrt((x_cone**2 + y_cone**2) / np.square(np.tan(ang_corr)))
 z_cone = np.where(z_cone > rad_kso, np.nan, z_cone)
 
-# Plot Chaser Relative
-xr_sol = x0[:, 6:9] * l_star
-x_mass = x0[:, -1]
-dV = 310 * 9.81 * np.log(x_mass[0] / x_mass[-1])
+# Plot
 plt.figure(1)
 ax = plt.axes(projection="3d")
-ax.plot3D(xr_sol[:, 0], xr_sol[:, 1], xr_sol[:, 2], "b", linewidth=2)
-ax.plot3D(0, 0, 0, "ko", markersize=5)
-ax.plot3D(xr_sol[0, 0], xr_sol[0, 1], xr_sol[0, 2], "go", markersize=5)
-ax.plot3D(xr_sol[-1, 0], xr_sol[-1, 1], xr_sol[-1, 2], "ro", markersize=5)
-ax.legend(
-    ["Trajectory", "Target", "Initial State", "Final State"], ncol=2, loc="upper center"
+
+# MCM
+while num_ep < num_episode_MCM:
+    # Initial state
+    ocp.x00[0] = [
+        1.02206694e00,
+        -5.25240280e-07,
+        -1.82100000e-01,
+        -6.71943026e-07,
+        -1.03353155e-01,
+        2.55711651e-06,
+        1.70730097e-12 + np.random.normal(0, 20 / l_star),
+        5.25240280e-07 + np.random.normal(0, 20 / l_star),
+        -6.49763576e-12 + np.random.normal(0, 20 / l_star),
+        6.71943026e-07,
+        -5.76798331e-12,
+        -2.55711651e-06,
+        mass / m_star,
+    ]
+
+    # Box constraints Pt.2
+    ocp.lbx[0] = [
+        379548434.40513575 / l_star,
+        -16223383.008425826 / l_star,
+        -70002940.10058032 / l_star,
+        -81.99561388926969 / (l_star / t_star),
+        -105.88740121359594 / (l_star / t_star),
+        -881.9954974936014 / (l_star / t_star),
+        -np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
+        -np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
+        -np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
+        -10 / (l_star / t_star),
+        -10 / (l_star / t_star),
+        -10 / (l_star / t_star),
+        0.8 * mass / m_star,
+    ]
+    ocp.ubx[0] = [
+        392882530.7281463 / l_star,
+        16218212.912172267 / l_star,
+        3248770.078052207 / l_star,
+        82.13051133777446 / (l_star / t_star),
+        1707.5720010497114 / (l_star / t_star),
+        881.8822374702228 / (l_star / t_star),
+        np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
+        np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
+        np.linalg.norm(ocp.x00[0][6:9]) * 1.05,
+        10 / (l_star / t_star),
+        10 / (l_star / t_star),
+        10 / (l_star / t_star),
+        mass / m_star,
+    ]
+    ocp.validate()
+
+    # Solve OCP
+    mpo, post = mp.solve(ocp, n_segments=1, poly_orders=4, scheme="LGR", plot=False)
+
+    # Post-Process
+    x0, u0, t0, _ = post.get_data(phases=0, interpolate=True)
+    t0 = t0 * t_star
+    rf = np.sqrt(x0[-1, 6] ** 2 + x0[-1, 7] ** 2 + x0[-1, 8] ** 2) * l_star
+    vf = np.sqrt(x0[-1, 9] ** 2 + x0[-1, 10] ** 2 + x0[-1, 11] ** 2) * l_star / t_star
+    xr_sol = x0[:, 6:9] * l_star
+    x_mass = x0[:, -1]
+
+    if rf < 5:
+        num_ep += +1
+        dv = 310 * 9.81 * np.log(x_mass[0] / x_mass[-1])
+
+        # Plot
+        ax.plot3D(
+            xr_sol[:, 0],
+            xr_sol[:, 1],
+            xr_sol[:, 2],
+            c=np.random.rand(
+                3,
+            ),
+            linewidth=2,
+        )
+
+        # Statistics
+        if num_ep == 0:
+            dv_mean = dv
+        else:
+            dv_mean = np.mean([dv_mean, dv])
+            dv_std = np.std(
+                [
+                    dv_mean + dv_std,
+                    dv_mean - dv_std,
+                    dv,
+                ]
+            )
+
+# Plot
+goal = ax.scatter(0, 0, 0, color="red", marker="^", label="Target")
+app_direction = ax.plot3D(
+    np.zeros(100),
+    np.linspace(0, 200, 100),
+    np.zeros(100),
+    color="black",
+    linestyle="dashed",
+    label="Corridor",
 )
 ax.plot_surface(x_cone, z_cone, y_cone, color="k", alpha=0.1)
 ax.set_xlabel("$\delta x$ [m]", labelpad=15)
@@ -225,7 +264,6 @@ plt.xticks([0])
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
 ax.zaxis.set_rotate_label(False)
 ax.set_zlabel("$\delta z$ [m]", labelpad=10, rotation=90)
-# plt.locator_params(axis="x", nbins=1)
 plt.locator_params(axis="y", nbins=6)
 plt.locator_params(axis="z", nbins=6)
 ax.xaxis.pane.set_edgecolor("black")
@@ -235,14 +273,10 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.set_aspect("equal", "box")
-ax.view_init(elev=0, azim=0)
 ax.set_title(
-    "$r_f$, $v_f$: [%.3f m, %.3f m/s]  - $\Delta V$: %.3f m/s "
-    % (rf, vf, dV),
-    y=1,
-    pad=30,
+    "\n $\mu_{\Delta V}, \sigma_{\Delta V}$: %.3f m/s, %.3f m/s" % (dv_mean, dv_std),
+    y=0.8
 )
-plt.savefig(".\OCP2.pdf")
+ax.view_init(elev=0, azim=0)
+plt.savefig(".\OCPmcm2.pdf")
 plt.show()
-
-

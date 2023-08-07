@@ -7,18 +7,6 @@ from stable_baselines3.common.env_checker import check_env
 import matplotlib.pyplot as plt
 from CallBack import CallBack
 
-# FUNCTION lrsched()
-def lrsched():
-    def reallr(progress):
-        lr = 0.00005
-        if progress < 0.10:
-            lr = 0.00001
-        if progress < 0.05:
-            lr = 0.000005
-        return lr
-    return reallr
-
-
 # TRAINING
 # Data and initialization
 m_star = 6.0458 * 1e24  # Kilograms
@@ -69,7 +57,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             20 * np.ones(3) / l_star,
-            0.5 * np.ones(3) / (l_star / t_star),
+            0.1 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1),
         )
@@ -96,7 +84,7 @@ model = RecurrentPPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=lrsched(),
+    learning_rate=0.00005,
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
@@ -150,11 +138,11 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[1:-1, 6:9] * l_star
-velocity = obs_vec[1:-1, 9:12] * l_star / t_star
-mass = obs_vec[1:-1, 12] * m_star
-thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt))[0 : len(position)]
+position = obs_vec[1:, 6:9] * l_star
+velocity = obs_vec[1:, 9:12] * l_star / t_star
+mass = obs_vec[1:, 12] * m_star
+thrust = actions_vec[1:, :] * (m_star * l_star / t_star**2)
+t = np.linspace(0, ToF, int(ToF / dt))[0: len(position)]
 
 # Approach Corridor
 len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
@@ -288,54 +276,3 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
 plt.savefig("plots\AngVel2.pdf")  # Save
-
-# Stability Analysis
-omega = 2.91 + 1e-6
-rho = np.zeros(len(t) - 1)
-rhodot = np.zeros(len(t) - 1)
-V = np.zeros(len(t) - 1)
-dVdT = np.zeros(len(t[0:-1]))
-for i in range(len(t) - 1):
-    Rot_z = np.array(
-        [
-            [np.cos(omega * t[i + 1]), -np.sin(omega * t[i + 1]), 0],
-            [np.sin(omega * t[i + 1]), np.cos(omega * t[i + 1]), 0],
-            [0, 0, 1],
-        ]
-    )
-    rho[i] = (
-        np.linalg.norm(np.matmul(Rot_z, (position[i] + obs_vec[i + 1, 0:3]))) * l_star
-    )
-    rhodot[i] = (
-        np.linalg.norm(np.matmul(Rot_z, (velocity[i] + obs_vec[i + 1, 3:6])))
-        * l_star
-        / t_star
-    )
-    V[i] = 0.5 * ((rho[i] ** 2 + rhodot[i] ** 2))
-V = (V - np.min(V))
-for i in range(len(t) - 2):
-    dVdT[i] = (V[i + 1] - V[i]) / dt
-plt.close()
-plt.figure(4)
-plt.plot(
-    (rho**2 + rho**2) / 1e22,
-    V / 1e20,
-    c="r",
-    linewidth=2,
-)
-plt.grid(True)
-plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
-plt.ylabel("$V \cdot 10^{-20}$ [-]")
-plt.savefig("plots\V2.pdf")
-plt.figure(5)
-plt.plot(
-    (rho**2 + rho**2) / 1e22,
-    dVdT / 1e20,
-    c="b",
-    linewidth=2,
-)
-plt.grid(True)
-plt.xlabel("$\Delta x^* \cdot 10^{-22}$ [-]")
-plt.ylabel("$\dot{V} \cdot 10^{-20}$ [-]")
-plt.savefig("plots\Vdot2.pdf")
-plt.show()

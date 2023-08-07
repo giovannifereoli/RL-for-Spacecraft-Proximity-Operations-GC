@@ -206,7 +206,7 @@ class ArpodCrtbp(gym.Env):
                     - (xt + xr + mu - 1) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Tx / m
-                + np.random.normal(0, std / (self.l_star / self.t_star**2)),
+                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
                 -2 * xrdot
                 + yr
                 + (1 - mu)
@@ -220,7 +220,7 @@ class ArpodCrtbp(gym.Env):
                     - (yt + yr) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Ty / m
-                + np.random.normal(0, std / (self.l_star / self.t_star**2)),
+                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
                 (1 - mu)
                 * (
                     zt / r1t_norm**3
@@ -232,7 +232,7 @@ class ArpodCrtbp(gym.Env):
                     - (zt + zr) / np.linalg.norm(np.add(r2t, rho)) ** 3
                 )
                 + Tz / m
-                + np.random.normal(0, std / (self.l_star / self.t_star**2)),
+                + np.random.uniform(0, std / (self.l_star / self.t_star**2)),
             ]
             dxdt[12] = -T_norm / (spec_impulse * g0)
 
@@ -310,7 +310,7 @@ class ArpodCrtbp(gym.Env):
 
     def get_reward(self, T):
         # Useful data
-        xrel_new = self.state[6:-4]
+        xrel_new = self.state[6:-4]  # TODO: prova R tutta negativa facendo -2, provato in mainBis
         x_norm = np.linalg.norm(
             np.array(
                 [
@@ -345,7 +345,7 @@ class ArpodCrtbp(gym.Env):
         # reward += self.attitude_const(T)   # TODO: sistema questo
 
         # Scaling reward
-        reward = reward / 50
+        reward = reward / 50 + 0.015
 
         return reward
 
