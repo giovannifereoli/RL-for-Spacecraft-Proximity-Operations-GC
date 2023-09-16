@@ -13,9 +13,9 @@ m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
-dt = 0.5
-ToF = 100
-batch_size = 64
+dt = 0.5   # TODO: 1 sec?
+ToF = 150
+batch_size = 64   # TODO: prova 128
 
 rho_max = 270
 rhodot_max = 20
@@ -57,7 +57,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             20 * np.ones(3) / l_star,
-            0.1 * np.ones(3) / (l_star / t_star),
+            0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1),
         )
@@ -85,12 +85,12 @@ model = RecurrentPPO(
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
     learning_rate=0.00005,
-    gamma=0.99,
+    gamma=0.99,  # TODO: questo prova a cambiarlo
     gae_lambda=1,
-    clip_range=0.1,
-    max_grad_norm=0.1,
+    clip_range=0.08,
+    max_grad_norm=0.09,  #TODO: prova 0.08 e entropy higher?
     ent_coef=1e-3,
-    policy_kwargs=dict(n_lstm_layers=2),
+    policy_kwargs=dict(n_lstm_layers=1),  # TODO: prova ancora due layers
     tensorboard_log="./tensorboard/"
 )
 
@@ -138,10 +138,10 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[1:, 6:9] * l_star
-velocity = obs_vec[1:, 9:12] * l_star / t_star
-mass = obs_vec[1:, 12] * m_star
-thrust = actions_vec[1:, :] * (m_star * l_star / t_star**2)
+position = obs_vec[1:-1, 6:9] * l_star
+velocity = obs_vec[1:-1, 9:12] * l_star / t_star
+mass = obs_vec[1:-1, 12] * m_star
+thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
 t = np.linspace(0, ToF, int(ToF / dt))[0: len(position)]
 
 # Approach Corridor

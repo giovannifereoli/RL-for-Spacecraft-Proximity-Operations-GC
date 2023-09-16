@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 from CallBack import CallBack
 
 # TRAINING
-# Data and initialization
+# Data and initialization   # TODO: magari qua hai bisogno di trasnfer learning
 m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
-dt = 0.5
-ToF = 500  # TODO: serve più tempo qua?
+dt = 1
+ToF = 225
 batch_size = 64
 
 rho_max = 1400
@@ -57,7 +57,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             100 * np.ones(3) / l_star,
-            0.2 * np.ones(3) / (l_star / t_star),
+            0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1),
         )
@@ -87,18 +87,18 @@ model = RecurrentPPO(
     learning_rate=0.00005,
     gamma=0.99,
     gae_lambda=1,
-    clip_range=0.1,
+    clip_range=0.09,
     max_grad_norm=0.1,
     ent_coef=1e-3,
-    policy_kwargs=dict(n_lstm_layers=2),
+    policy_kwargs=dict(n_lstm_layers=1),
     tensorboard_log="./tensorboard/"
 )
 
-print(model.policy)  # OSS: questo dovrebbe andare 8M e l'altro 4M
+print(model.policy)  # OSS: questo dovrebbe andare oltre 12M
 
 # Start learning
-call_back = CallBack(env)
-model.learn(total_timesteps=12000000, progress_bar=True, callback=call_back)
+call_back = CallBack(env)  # TODO: fallo che si ferma/salva il best, se no così è troppo casuale
+model.learn(total_timesteps=16000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
@@ -138,11 +138,11 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[1:, 6:9] * l_star
-velocity = obs_vec[1:, 9:12] * l_star / t_star
-mass = obs_vec[1:, 12] * m_star
-thrust = actions_vec[1:, :] * (m_star * l_star / t_star**2)
-t = np.linspace(0, ToF, int(ToF / dt))[0 : len(position)]
+position = obs_vec[1:-1, 6:9] * l_star
+velocity = obs_vec[1:-1, 9:12] * l_star / t_star
+mass = obs_vec[1:-1, 12] * m_star
+thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
+t = np.linspace(0, ToF, int(ToF / dt) + 1)[0: len(position)]
 
 # Approach Corridor
 len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))

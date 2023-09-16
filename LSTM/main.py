@@ -15,7 +15,7 @@ from CallBack import CallBack
 # FUNCTION lrsched()
 def lrsched():
     def reallr(progress):
-        lr = 0.00005  # TODO: provare lr = 0.000025
+        lr = 0.00005
         if progress < 0.10:
             lr = 0.00001
         if progress < 0.05:
@@ -75,7 +75,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             5 * np.ones(3) / l_star,
-            0.1 * np.ones(3) / (l_star / t_star),
+            0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1),
         )
@@ -105,10 +105,10 @@ model = RecurrentPPO(
     learning_rate=0.00005,
     gamma=0.99,
     gae_lambda=1,
-    clip_range=0.1,  # TODO: hai ancora un problema di stabilità, sistema con lr 2.5*1e-5?
+    clip_range=0.09,
     max_grad_norm=0.1,
     ent_coef=1e-3,
-    policy_kwargs=dict(n_lstm_layers=2),
+    policy_kwargs=dict(n_lstm_layers=1),
     # policy_kwargs=dict(enable_critic_lstm=False, n_lstm_layers=2, optimizer_kwargs=dict(weight_decay=1e-5)),
     tensorboard_log="./tensorboard/",
 )
@@ -124,12 +124,12 @@ eval_callback = EvalCallback(
     verbose=1,  # TODO: prova questo o eval
 )
 call_back = CallBack(env)
-model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
+# model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
-mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
-print(mean_reward)
-model.save("ppo_recurrent")
+# mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
+# print(mean_reward)
+# model.save("ppo_recurrent")
 
 # TESTING
 # Remove to demonstrate saving and loading
@@ -164,10 +164,10 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[1:, 6:9] * l_star
-velocity = obs_vec[1:, 9:12] * l_star / t_star
-mass = obs_vec[1:, 12] * m_star
-thrust = actions_vec[1:, :] * (m_star * l_star / t_star**2)
+position = obs_vec[1:-1, 6:9] * l_star
+velocity = obs_vec[1:-1, 9:12] * l_star / t_star
+mass = obs_vec[1:-1, 12] * m_star
+thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
 t = np.linspace(0, ToF, int(ToF / dt))[0 : len(position)]
 
 # Approach Corridor

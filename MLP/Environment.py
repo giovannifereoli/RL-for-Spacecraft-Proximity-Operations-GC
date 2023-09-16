@@ -374,16 +374,17 @@ class ArpodCrtbp(gym.Env):
         # Angular velocity
         Tnew_dir = Tnew / (np.linalg.norm(Tnew) + 1e-36)
         Told_dir = self.Told / (np.linalg.norm(self.Told) + 1e-36)
-        dTdt_ver = (Tnew_dir - Told_dir)   # Finite differences
-        w_ang = np.linalg.norm(np.array([0, dTdt_ver[2], - dTdt_ver[1]]))
+        dTdt_ver = (Tnew_dir - Told_dir) / (self.dt * self.t_star)   # Finite differences
+        w_ang = np.linalg.norm(np.array([0, dTdt_ver[2], -dTdt_ver[1]]))  # OSS: rad/s
 
         # Dense reward attitude control
         reward_w = - (1 / 10) * np.exp(w_ang / (2 * np.pi)) ** 2
-        if w_ang > np.deg2rad(10):
-            self.infos = {"Episode success": "fast rotation"}
-            print("Fast rotation.")
-            reward_w += - 30
-            self.done = True
+        if not np.linalg.norm(Told_dir) == 0:  # OSS: excluding first step
+            if w_ang > np.deg2rad(5):
+                self.infos = {"Episode success": "fast rotation"}
+                print("Fast rotation.")
+                # reward_w += - 30
+                # self.done = True
 
         # Update Told
         self.Told = Tnew

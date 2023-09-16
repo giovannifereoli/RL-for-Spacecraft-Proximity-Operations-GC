@@ -73,7 +73,7 @@ class ArpodCrtbp(gym.Env):
                 1.2 * x0ivp[-2],
                 0,
                 -self.max_thrust,
-                -200,
+                -50,
             ]
         ).flatten()
         self.max = np.array(
@@ -93,7 +93,7 @@ class ArpodCrtbp(gym.Env):
                 0.8 * x0ivp[-2],  # OSS: empirically determined
                 self.max_time,
                 self.max_thrust,
-                200,  # OSS: empirically determined
+                50,  # OSS: empirically determined   # TODO: cambiare? era 200
             ]
         ).flatten()
 
@@ -310,7 +310,7 @@ class ArpodCrtbp(gym.Env):
 
     def get_reward(self, T):
         # Useful data
-        xrel_new = self.state[6:-4]  # TODO: prova R tutta negativa facendo -2, provato in mainBis
+        xrel_new = self.state[6:-4]
         x_norm = np.linalg.norm(
             np.array(
                 [
@@ -321,7 +321,7 @@ class ArpodCrtbp(gym.Env):
         ) / np.linalg.norm(np.array([1, 1, 1, 1, 1, 1]))
         rho = np.linalg.norm(xrel_new[0:3]) * self.l_star
         rhodot = np.linalg.norm(xrel_new[3:6]) * self.l_star / self.t_star
-        print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
+        print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))  # TODO: rifletti ancora sul significato qua
 
         # Dense/Episodic reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
@@ -334,18 +334,17 @@ class ArpodCrtbp(gym.Env):
         if rho <= self.safety_radius and rhodot <= self.safety_vel:  # OSS: perfect dock
             self.infos = {"Episode success": "docked"}
             print("Docked.")
-            reward += 100
+            reward += 30  # TODO: sto provando 30, prova tutti a 20? Era a 100 ultimo
             self.done = True
 
         # Dense reward thrust optimization
-        reward += - (1 / 100) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2
+        reward += - (1 / 50) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2  # TODO: aumenta? era 100
 
         # Dense/Episodic reward constraints
         reward += self.corridor_const(rho, xrel_new)
-        # reward += self.attitude_const(T)   # TODO: sistema questo
 
         # Scaling reward
-        reward = reward / 50 + 0.015
+        reward = reward / 50
 
         return reward
 
@@ -370,26 +369,6 @@ class ArpodCrtbp(gym.Env):
             self.done = True
 
         return reward_cons
-
-    def attitude_const(self, Tnew):
-        # Angular velocity
-        Tnew_dir = Tnew / (np.linalg.norm(Tnew) + 1e-36)
-        Told_dir = self.Told / (np.linalg.norm(self.Told) + 1e-36)
-        dTdt_ver = (Tnew_dir - Told_dir)  # Finite differences
-        w_ang = np.linalg.norm(np.array([0, dTdt_ver[2], -dTdt_ver[1]]))
-
-        # Dense reward attitude control
-        reward_w = -(1 / 10) * np.exp(w_ang / (2 * np.pi)) ** 2
-        if w_ang > np.deg2rad(10):
-            self.infos = {"Episode success": "fast rotation"}
-            print("Fast rotation.")
-            reward_w += - 30
-            self.done = True
-
-        # Update Told
-        self.Told = Tnew
-
-        return reward_w
 
     # Re-scale action from policy net
     def scaler_reverse_action(self, action):

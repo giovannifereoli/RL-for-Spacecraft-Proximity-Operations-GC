@@ -222,7 +222,7 @@ class ArpodCrtbp(gym.Env):
             dxdt[6:9] = np.subtract([xcdot, ycdot, zcdot], dxdt[0:3])
             dxdt[9:12] = np.subtract(
                 [
-                    2 * ycdot    # TODO: le unità sono giuste?
+                    2 * ycdot
                     + xc
                     - (1 - mu) * (xc + mu) / r1c_norm ** 3
                     - mu * (xc + mu - 1) / r2c_norm ** 3
@@ -346,7 +346,6 @@ class ArpodCrtbp(gym.Env):
 
         # Dense/Episodic reward constraints
         reward += self.corridor_const(rho, xrel_new)
-        # reward += self.attitude_const(T)
 
         # Scaling reward
         reward = reward / 50
@@ -374,26 +373,6 @@ class ArpodCrtbp(gym.Env):
             self.done = True
 
         return reward_cons
-
-    def attitude_const(self, Tnew):
-        # Angular velocity
-        Tnew_dir = Tnew / (np.linalg.norm(Tnew) + 1e-36)
-        Told_dir = self.Told / (np.linalg.norm(self.Told) + 1e-36)
-        dTdt_ver = (Tnew_dir - Told_dir)   # Finite differences
-        w_ang = np.linalg.norm(np.array([0, dTdt_ver[2], - dTdt_ver[1]]))
-
-        # Dense reward attitude control
-        reward_w = - (1 / 10) * np.exp(w_ang / (2 * np.pi)) ** 2
-        if w_ang > np.deg2rad(10):
-            self.infos = {"Episode success": "fast rotation"}
-            print("Fast rotation.")
-            reward_w += - 30
-            self.done = True
-
-        # Update Told
-        self.Told = Tnew
-
-        return reward_w
 
     # Re-scale action from policy net
     def scaler_reverse_action(self, action):
