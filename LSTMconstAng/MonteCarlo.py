@@ -13,15 +13,15 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 200
+ToF = 100
 batch_size = 64
 
 rho_max = 70
 rhodot_max = 6
 
 ang_corr = np.deg2rad(20)
-safety_radius = 1
-safety_vel = 0.1
+safety_radius = 2
+safety_vel = 0.2
 
 max_thrust = 29620
 mass = 21000
@@ -58,7 +58,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             5 * np.ones(3) / l_star,
-            0.1 * np.ones(3) / (l_star / t_star),
+            0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
         )
@@ -81,7 +81,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrent")
+model = RecurrentPPO.load("ppo_recurrentTL2Const")
 print(model.policy)
 
 # Trajectory propagation
@@ -294,20 +294,20 @@ ax.set_title(
     y=1,
     pad=-3,
 )
-plt.savefig("plots\MCM_Trajectory.pdf")  # Save
+plt.savefig("plots\MCM_TrajectoryConst.pdf")  # Save
 
 # Stability Analysis
 plt.figure(2)
 plt.grid(True)
 plt.xlabel("$\Delta x^*$ [-]")
 plt.ylabel("$V}$ [-]")
-plt.savefig("plots\V.pdf")
+plt.savefig("plots\VConst.pdf")
 
 plt.figure(3)
 plt.grid(True)
 plt.xlabel("$\Delta x^*$ [-]")
 plt.ylabel("$\dot{V}$ [-]")
-plt.savefig("plots\Vdot.pdf")
+plt.savefig("plots\VdotConst.pdf")
 
 
 # Computational Cost
@@ -329,5 +329,5 @@ plt.legend(["CPU Time", "Mean CPU Time"])
 plt.grid(True)
 plt.xlabel("Sample Step [-]")
 plt.ylabel("Computational Cost [s]")
-plt.savefig("plots\Cost.pdf")
+plt.savefig("plots\CostConst.pdf")
 plt.show()

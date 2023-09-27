@@ -122,7 +122,7 @@ for num_ep in range(num_episode_MCM):
         # Action sampling and propagation
         t1 = time.perf_counter()
         action, lstm_states = model.predict(
-            obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
+            obs, state=lstm_states, episode_start=np.array([done]), deterministic=False
         )  # OSS: Episode start signals are used to reset the lstm states
         tc = time.perf_counter() - t1
         obs, rewards, done, info = env.step(action)

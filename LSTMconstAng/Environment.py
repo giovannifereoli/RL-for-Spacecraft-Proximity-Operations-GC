@@ -328,7 +328,7 @@ class ArpodCrtbp(gym.Env):
         print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
         # Dense/Episodic reward RVD
-        reward = (1 / 50) * np.log(x_norm) ** 2
+        reward = (1 / 10) * np.log(x_norm) ** 2
         self.infos = {"Episode success": "approaching"}
         if rho >= self.rho_max:  # OSS: no backward motion
             self.infos = {"Episode success": "lost"}
@@ -338,30 +338,41 @@ class ArpodCrtbp(gym.Env):
         if rho <= self.safety_radius and rhodot <= self.safety_vel:  # OSS: perfect dock
             self.infos = {"Episode success": "docked"}
             print("Docked.")
-            reward += 100
+            reward += 50
             self.done = True
 
         # Plume impingement (add maybe tangential velocity constraint and sensor not toward sun?)
+
         if (
             np.arccos(
-                np.dot(T, -xrel_new[0:3])
+                np.dot(T, xrel_new[0:3])
                 / (np.linalg.norm(T) * np.linalg.norm(xrel_new[0:3]))
             )
-            > np.pi / 4
-            and T[1] > 0
-        ):
-            print("Plume impingement.")  # TODO: lo stato è okay?
+            < np.pi / 9
+        ) and np.dot(T, xrel_new[0:3]) > 0:
+            print("Plume impingement.")
             self.infos = {"Episode success": "plume"}
             reward += -30
             self.done = True
-        if rhodot > 3:
+        if (
+            np.arccos(
+                np.dot(T, np.array([1, 0, 0]))
+                / (np.linalg.norm(T))
+            )
+            < np.pi / 9
+        ) and np.dot(T, np.array([1, 0, 0])) < 0:
+            print("Earth in FoV.")
+            self.infos = {"Episode success": "bright object"}
+            reward += -30
+            self.done = True
+        if rhodot > 4:
             print("High Translational Velocity.")
             self.infos = {"Episode success": "velocity high"}
             reward += -30
             self.done = True
 
         # Dense reward thrust optimization
-        reward += - (1 / 100) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2
+        reward += -(1 / 100) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2
 
         # Dense/Episodic reward constraints
         reward += self.corridor_const(rho, xrel_new)

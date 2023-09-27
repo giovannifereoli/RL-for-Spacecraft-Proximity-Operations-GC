@@ -21,8 +21,8 @@ rho_max = 70
 rhodot_max = 6
 
 ang_corr = np.deg2rad(20)
-safety_radius = 1
-safety_vel = 0.1
+safety_radius = 2
+safety_vel = 0.2
 
 max_thrust = 29620
 mass = 21000
@@ -81,26 +81,26 @@ check_env(env)
 # Start learning
 call_back = CallBack(env)
 model = RecurrentPPO.load(
-    "ppo_recurrentBest",
+    "ppo_recurrentTL2Const",
     print_system_info=True,
     custom_objects={"learning_rate": 5 * 1e-5},
-    # tensorboard_log=f"tensorboard\RecurrentPPO_3",
+    tensorboard_log=f"tensorboard\RecurrentPPO_15",
 )
 print(model.policy)
 model.set_env(env)
-model.learn(total_timesteps=2000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=3000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_recurrentTLextra")
+model.save("ppo_recurrentTL3Const")  # TODO: cambia tutti Cost in Const
 
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrentTLconst")
+model = RecurrentPPO.load("ppo_recurrentTL3Const")
 obs = env.reset()
 
 # Trajectory propagation
@@ -113,7 +113,7 @@ actions_vec = np.zeros(3)
 while True:
     # Action sampling and propagation
     action, lstm_states = model.predict(
-        obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
+        obs, state=lstm_states, episode_start=np.array([done]), deterministic=False
     )  # OSS: Episode start signals are used to reset the lstm states
     obs, rewards, done, info = env.step(action)
 
@@ -154,6 +154,18 @@ ax.plot3D(
     c="k",
     linewidth=2,
 )
+ax.quiver(
+    position[::6, 0],
+    position[::6, 1],
+    position[::6, 2],
+    thrust[::6, 0],
+    thrust[::6, 1],
+    thrust[::6, 2],
+    color="r",
+    length=6,
+    linewidth=0.9,
+    normalize=True,
+)
 start = ax.scatter(
     position[0, 0],
     position[0, 1],
@@ -192,7 +204,7 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.set_aspect("equal", "box")
 ax.view_init(elev=0, azim=0)
-plt.savefig("plots\TrajectoryTL.pdf")  # Save
+plt.savefig("plots\TrajectoryConst.pdf")  # Save
 
 # Plot relative velocity norm
 plt.close()  # Initialize
@@ -201,7 +213,7 @@ plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
-plt.savefig("plots\VelocityTL.pdf")  # Save
+plt.savefig("plots\VelocityConst.pdf")  # Save
 
 # Plot relative position
 plt.close()  # Initialize
@@ -210,7 +222,7 @@ plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
-plt.savefig("plots\PositionTL.pdf")  # Save
+plt.savefig("plots\PositionConst.pdf")  # Save
 
 # Plot mass usage
 plt.close()  # Initialize
@@ -219,7 +231,7 @@ plt.plot(t, mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass [kg]")
-plt.savefig("plots\MassTL.pdf")  # Save
+plt.savefig("plots\MassConst.pdf")  # Save
 
 # Plot CoM control action
 plt.close()
@@ -247,7 +259,7 @@ plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Thrust [N]")
 plt.xlim(t[0], t[-1])
-plt.savefig("plots\ThrustTL.pdf", bbox_inches="tight")  # Save
+plt.savefig("plots\ThrustConst.pdf", bbox_inches="tight")  # Save
 
 # Plot angular velocity
 dTdt_ver = np.zeros([len(t), 3])
@@ -265,5 +277,5 @@ plt.plot(t, w_ang, c="c", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Angular velocity [deg/s]")
-plt.savefig("plots\AngVelTL.pdf")  # Save
+plt.savefig("plots\AngVelConst.pdf")  # Save
 

@@ -239,7 +239,7 @@ print(E)
 
 # Integration
 ToF = 10 * (np.pi / 2)   # OSS: sono sette orbite, 65 giorni
-disc = 1000
+disc = 100
 dt = ToF / 1000
 sol = solve_ivp(
     fun=rel_crtbpT,
@@ -262,12 +262,34 @@ x_cone, y_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j
 z_cone = np.sqrt((x_cone**2 + y_cone**2) / np.square(np.tan(ang_corr)))
 z_cone = np.where(z_cone > rad_kso, np.nan, z_cone)
 
-# Plot Chaser Relative
+# Thrust plot
 xr_sol = state[:, 6:9] * l_star
 x_mass = state[:, -1] * m_star
+x = state[:, 6:12]
+Tx = np.zeros(len(x_mass))
+Ty = np.zeros(len(x_mass))
+Tz = np.zeros(len(x_mass))
+for i in range(len(x_mass)):
+    Thrust = - max_thrust * np.dot(K, x[i, :])
+    Tx[i] = Thrust[0]
+    Ty[i] = Thrust[1]
+    Tz[i] = Thrust[2]
+plt.close()  # Initialize
+plt.figure(3)
+plt.semilogy(np.linspace(0, len(x_mass), len(x_mass)), Tx, c="r", linewidth=2, label='Tx')
+plt.semilogy(np.linspace(0, len(x_mass), len(x_mass)), Ty, c="b", linewidth=2, label='Ty')
+plt.semilogy(np.linspace(0, len(x_mass), len(x_mass)), Tz, c="g", linewidth=2, label='Tz')
+plt.legend()
+plt.grid(True)
+plt.xlabel("Step [-]")
+plt.ylabel("Thrust [N]")
+plt.show()
+
+# Plot Chaser Relative
 plt.figure(1)
 ax = plt.axes(projection="3d")
 ax.plot3D(xr_sol[:, 0], xr_sol[:, 1], xr_sol[:, 2], "b", linewidth=2)
+ax.quiver(xr_sol[:, 0], xr_sol[:, 1], xr_sol[:, 2], Tx, Ty, Tz,  color='r', length=3, normalize=True)
 ax.plot3D(0, 0, 0, "ko", markersize=5)
 ax.plot3D(xr_sol[0, 0], xr_sol[0, 1], xr_sol[0, 2], "go", markersize=5)
 ax.plot3D(xr_sol[-1, 0], xr_sol[-1, 1], xr_sol[-1, 2], "ro", markersize=5)
@@ -301,27 +323,6 @@ plt.plot(np.linspace(0, len(x_mass), len(x_mass)), x_mass, c="r", linewidth=2)
 plt.grid(True)
 plt.xlabel("Step [-]")
 plt.ylabel("Mass [kg]")  # OSS: 1ish kg
-plt.show()
-
-# Thrust plot
-x = state[:, 6:12]
-Tx = np.zeros(len(x_mass))
-Ty = np.zeros(len(x_mass))
-Tz = np.zeros(len(x_mass))
-for i in range(len(x_mass)):
-    Thrust = - max_thrust * np.dot(K, x[i, :])
-    Tx[i] = Thrust[0]
-    Ty[i] = Thrust[1]
-    Tz[i] = Thrust[2]
-plt.close()  # Initialize
-plt.figure(3)
-plt.semilogy(np.linspace(0, len(x_mass), len(x_mass)), Tx, c="r", linewidth=2, label='Tx')
-plt.semilogy(np.linspace(0, len(x_mass), len(x_mass)), Ty, c="b", linewidth=2, label='Ty')
-plt.semilogy(np.linspace(0, len(x_mass), len(x_mass)), Tz, c="g", linewidth=2, label='Tz')
-plt.legend()
-plt.grid(True)
-plt.xlabel("Step [-]")
-plt.ylabel("Thrust [N]")
 plt.show()
 
 # Plot angular velocity

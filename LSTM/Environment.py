@@ -73,7 +73,7 @@ class ArpodCrtbp(gym.Env):
                 1.2 * x0ivp[-2],
                 0,
                 -self.max_thrust,
-                -50,
+                -150,
             ]
         ).flatten()
         self.max = np.array(
@@ -93,7 +93,7 @@ class ArpodCrtbp(gym.Env):
                 0.8 * x0ivp[-2],  # OSS: empirically determined
                 self.max_time,
                 self.max_thrust,
-                50,  # OSS: empirically determined   # TODO: cambiare? era 200
+                200,  # OSS: empirically determined
             ]
         ).flatten()
 
@@ -329,17 +329,17 @@ class ArpodCrtbp(gym.Env):
         if rho >= self.rho_max:  # OSS: no backward motion
             self.infos = {"Episode success": "lost"}
             print("Lost.")
-            reward += -30
+            reward += - 30
             self.done = True
         if rho <= self.safety_radius and rhodot <= self.safety_vel:  # OSS: perfect dock
             self.infos = {"Episode success": "docked"}
             print("Docked.")
-            reward += 30  # TODO: sto provando 30, prova tutti a 20? Era a 100 ultimo
+            reward += 100
             self.done = True
 
         # Dense reward thrust optimization
-        reward += - (1 / 50) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2  # TODO: aumenta? era 100
-
+        reward += - (1 / 300) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2  # TODO: era 100
+        # TODO: fallo meno ambiguo sull'obbiettivo?
         # Dense/Episodic reward constraints
         reward += self.corridor_const(rho, xrel_new)
 

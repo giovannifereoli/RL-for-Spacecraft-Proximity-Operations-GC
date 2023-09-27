@@ -195,7 +195,7 @@ class ArpodCrtbp(gym.Env):
             dxdt5c = (
                     -ms * (yc - rho * np.sin(ws * t)) / r3c ** 3 - ms * np.sin(ws * t) / rho ** 2
             )
-            dxdt6c = - ms * zc / r3c ** 3  # TODO: check correttezza 4B pert
+            dxdt6c = - ms * zc / r3c ** 3
 
             # SRP additional values and components
             P = 4.56 * 1e-6 / (self.m_star * self.l_star / self.t_star ** 2) * self.l_star ** 2  # OSS: N x m^-2
