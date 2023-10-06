@@ -13,9 +13,9 @@ m_star = 6.0458 * 1e24  # Kilograms
 l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
-dt = 0.5   # TODO: 1 sec?
-ToF = 150
-batch_size = 64   # TODO: prova 128
+dt = 0.5
+ToF = 100
+batch_size = 64
 
 rho_max = 270
 rhodot_max = 20
@@ -85,12 +85,12 @@ model = RecurrentPPO(
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
     learning_rate=0.00005,
-    gamma=0.99,  # TODO: questo prova a cambiarlo
+    gamma=0.99,
     gae_lambda=1,
     clip_range=0.08,
-    max_grad_norm=0.09,  #TODO: prova 0.08 e entropy higher?
+    max_grad_norm=0.09,
     ent_coef=1e-3,
-    policy_kwargs=dict(n_lstm_layers=1),  # TODO: prova ancora due layers
+    policy_kwargs=dict(n_lstm_layers=2),
     tensorboard_log="./tensorboard/"
 )
 
@@ -98,7 +98,7 @@ print(model.policy)  # OSS: questo dovrebbe andare 8M e l'altro 4M
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=10000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)

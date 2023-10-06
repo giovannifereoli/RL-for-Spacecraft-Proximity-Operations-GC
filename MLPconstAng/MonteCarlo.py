@@ -81,7 +81,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = PPO.load("ppo_mlpConst")
+model = PPO.load("ppo_mlpConstBest")
 print(model.policy)
 
 # Trajectory propagation
@@ -120,7 +120,7 @@ for num_ep in range(num_episode_MCM):
         # Action sampling and propagation
         t1 = time.perf_counter()
         action, _states = model.predict(
-            obs, deterministic=True
+            obs, deterministic=False
         )  # OSS: Episode start signals are used to reset the lstm states
         obs, rewards, done, info = env.step(action)
         tc = time.perf_counter() - t1

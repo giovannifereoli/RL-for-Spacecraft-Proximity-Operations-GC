@@ -24,7 +24,6 @@ def lrsched():
 
     return reallr  # TODO: ricontrolla tutto
 
-
 # TRAINING
 # Data and initialization
 m_star = 6.0458 * 1e24  # Kilograms
@@ -108,7 +107,7 @@ model = RecurrentPPO(
     clip_range=0.09,
     max_grad_norm=0.1,
     ent_coef=1e-3,
-    policy_kwargs=dict(n_lstm_layers=1),
+    policy_kwargs=dict(n_lstm_layers=2),
     # policy_kwargs=dict(enable_critic_lstm=False, n_lstm_layers=2, optimizer_kwargs=dict(weight_decay=1e-5)),
     tensorboard_log="./tensorboard/",
 )
@@ -124,12 +123,12 @@ eval_callback = EvalCallback(
     verbose=1,  # TODO: prova questo o eval
 )
 call_back = CallBack(env)
-# model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
-# mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
-# print(mean_reward)
-# model.save("ppo_recurrent")
+mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
+print(mean_reward)
+model.save("ppo_recurrent")
 
 # TESTING
 # Remove to demonstrate saving and loading

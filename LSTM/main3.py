@@ -14,7 +14,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 1
-ToF = 200
+ToF = 150
 batch_size = 64
 
 rho_max = 1400

@@ -22,7 +22,7 @@ rhodot_max = 6
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
-safety_vel = 0.1
+safety_vel = 0.01
 
 max_thrust = 29620
 mass = 21000
@@ -57,7 +57,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             5 * np.ones(3) / l_star,
-            0.1 * np.ones(3) / (l_star / t_star),
+            0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
         )
@@ -97,20 +97,20 @@ model = PPO(
 print(model.policy)
 
 # Start learning
-#call_back = CallBack(env)
-#model.learn(total_timesteps=4000000, progress_bar=True, callback=call_back)
+call_back = CallBack(env)
+model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
-#mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
-#print(mean_reward)
-#model.save("ppo_mlp")
+mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
+print(mean_reward)
+model.save("ppo_mlp")
 
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = PPO.load("ppo_mlpBest")
+model = PPO.load("ppo_mlp")
 obs = env.reset()
 
 # Trajectory propagation

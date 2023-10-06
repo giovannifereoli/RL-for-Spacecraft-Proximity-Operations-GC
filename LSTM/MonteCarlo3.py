@@ -13,7 +13,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 400
+ToF = 150
 batch_size = 64
 
 rho_max = 1400
@@ -81,7 +81,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = RecurrentPPO.load("ppo_recurrentBest3")
+model = RecurrentPPO.load("ppo_recurrent3")
 print(model.policy)
 
 # Trajectory propagation

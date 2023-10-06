@@ -22,7 +22,7 @@ rhodot_max = 20
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
-safety_vel = 0.1
+safety_vel = 0.01
 
 max_thrust = 29620
 mass = 21000
@@ -81,9 +81,9 @@ check_env(env)
 # Start learning
 call_back = CallBack(env)
 model = PPO.load(
-    "ppo_mlp",
+    "ppo_mlpBest2",
     print_system_info=True,
-    custom_objects={"learning_rate": 5 * 1e-5},
+    custom_objects={"learning_rate": 0.0001},
     # tensorboard_log=f"tensorboard\RecurrentPPO_1",
 )
 print(model.policy)

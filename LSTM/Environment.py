@@ -338,8 +338,7 @@ class ArpodCrtbp(gym.Env):
             self.done = True
 
         # Dense reward thrust optimization
-        reward += - (1 / 300) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2  # TODO: era 100
-        # TODO: fallo meno ambiguo sull'obbiettivo?
+        reward += - (1 / 100) * np.exp(np.linalg.norm(T) / self.max_thrust) ** 2
         # Dense/Episodic reward constraints
         reward += self.corridor_const(rho, xrel_new)
 
