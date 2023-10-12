@@ -81,7 +81,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = PPO.load("ppo_mlp2")
+model = PPO.load("ppo_mlpBest2")
 print(model.policy)
 
 # Trajectory propagation
@@ -140,7 +140,7 @@ for num_ep in range(num_episode_MCM):
         c=np.random.rand(
             3,
         ),
-        linewidth=2,
+        linewidth=1.5,
     )
 
     # DV and ToF Computation
@@ -238,6 +238,7 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.view_init(elev=0, azim=0)
+'''
 ax.set_title(
     " $S_r$ : %.1f %% "
     "\n $\mu_{|\mathbf{x}_f|}$: [%.3f m, %.3f m/s] "
@@ -246,6 +247,6 @@ ax.set_title(
     % (prob_RVD, posfin_mean, velfin_mean, posfin_std, velfin_std, dv_mean, dv_std),
     y=1,
     pad=-3,
-)
+)'''
 plt.savefig("plots\MCM_Trajectory2.pdf")  # Save
 plt.show()

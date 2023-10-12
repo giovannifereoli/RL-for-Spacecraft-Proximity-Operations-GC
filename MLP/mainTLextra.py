@@ -93,7 +93,7 @@ model.learn(total_timesteps=2000000, progress_bar=True, callback=call_back)
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_mlpTLextra")  # TODO: attento al nome qua
+model.save("ppo_mlpTLextra")
 
 
 # TESTING

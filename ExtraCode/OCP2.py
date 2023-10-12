@@ -199,7 +199,7 @@ rf = np.sqrt(x0[-1, 6] ** 2 + x0[-1, 7] ** 2 + x0[-1, 8] ** 2) * l_star
 vf = np.sqrt(x0[-1, 9] ** 2 + x0[-1, 10] ** 2 + x0[-1, 11] ** 2) * l_star / t_star
 
 # Approach Corridor
-rad_kso = 200  # TODO: metti cono tagliato
+rad_kso = 200
 ang_corr = np.deg2rad(20)
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, y_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]

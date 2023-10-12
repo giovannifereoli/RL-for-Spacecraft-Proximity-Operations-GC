@@ -314,7 +314,7 @@ class ArpodCrtbp(gym.Env):
 
     def get_reward(self, T):
         # Useful data
-        xrel_new = self.state[6:-6]  # TODO: è tutto okay qua?
+        xrel_new = self.state[6:-6]
         x_norm = np.linalg.norm(
             np.array(
                 [
@@ -409,7 +409,7 @@ class ArpodCrtbp(gym.Env):
         # Cartesian to Spherical coordinates
         Tnew_dir = Tnew / (
             np.linalg.norm(Tnew) + 1e-36
-        )  # TODO: sistema questo, sicuro in teoria sia giusto?
+        )
         Told_dir = self.Told / (np.linalg.norm(self.Told) + 1e-36)
 
         theta_new = np.arctan2(Tnew_dir[1], Tnew_dir[0])

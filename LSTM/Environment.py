@@ -73,7 +73,7 @@ class ArpodCrtbp(gym.Env):
                 1.2 * x0ivp[-2],
                 0,
                 -self.max_thrust,
-                -150,
+                -200,
             ]
         ).flatten()
         self.max = np.array(
@@ -321,7 +321,7 @@ class ArpodCrtbp(gym.Env):
         ) / np.linalg.norm(np.array([1, 1, 1, 1, 1, 1]))
         rho = np.linalg.norm(xrel_new[0:3]) * self.l_star
         rhodot = np.linalg.norm(xrel_new[3:6]) * self.l_star / self.t_star
-        print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))  # TODO: rifletti ancora sul significato qua
+        print("Position %.4f m, velocity %.4f m/s" % (rho, rhodot))
 
         # Dense/Episodic reward RVD
         reward = (1 / 50) * np.log(x_norm) ** 2
@@ -355,7 +355,7 @@ class ArpodCrtbp(gym.Env):
         len_cut = np.sqrt((self.safety_radius**2) / np.square(np.tan(self.ang_corr)))
         const_signal = -np.dot(
             pos_vec + np.array([0, len_cut, 0]), cone_vec
-        ) + rho * np.cos(self.ang_corr)
+        ) + rho * np.cos(self.ang_corr)  # TODO: qua l'errore rho^star
 
         # Computation reward w.r.t. angle
         reward_cons = -(1 / 10) * np.exp(ang / (2 * np.pi)) ** 2

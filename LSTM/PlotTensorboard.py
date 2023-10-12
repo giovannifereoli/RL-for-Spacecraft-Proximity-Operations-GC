@@ -14,7 +14,7 @@ reward = np.array(list(reward_data["Value"].values()))
 # Plot Reward
 plt.close()  # Initialize
 plt.figure()
-plt.semilogy(step, reward + 1.15, c="b", linewidth=2)
+plt.semilogy(step, reward + 0.8, c="b", linewidth=2)
 plt.grid(True, which='both')
 plt.xlabel("Learning Step [-]")
 plt.ylabel("Mean Reward [-]")

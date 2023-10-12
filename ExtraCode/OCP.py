@@ -113,7 +113,7 @@ ocp.x00[0] = [
     6.44013821e-07,
     1.08357767e-13,  # + np.random.normal(0, 5 / l_star),
     1.32282592e-07,  # + np.random.normal(0, 5 / l_star),
-    -4.12142542e-13,  # + np.random.normal(0, 5 / l_star), # TODO: increementa iterations
+    -4.12142542e-13,  # + np.random.normal(0, 5 / l_star),
     1.69229909e-07,
     -3.65860120e-13,
     -6.44013821e-07,

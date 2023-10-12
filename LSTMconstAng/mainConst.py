@@ -32,15 +32,15 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 100  # TODO: forse dt serve piu piccolo qua
-batch_size = 64  # TODO: attento che finiscono due insieme
+ToF = 100
+batch_size = 64
 
 rho_max = 70
 rhodot_max = 6
 
 ang_corr = np.deg2rad(20)
-safety_radius = 2
-safety_vel = 0.2
+safety_radius = 1
+safety_vel = 0.1
 
 max_thrust = 29620  # TODO: metti arrows thrust?
 mass = 21000
@@ -121,7 +121,7 @@ eval_callback = EvalCallback(
     callback_on_new_best=StopTrainingOnRewardThreshold(
         reward_threshold=2.04, verbose=1
     ),
-    verbose=1,  # TODO: prova questo o eval
+    verbose=1,
 )
 call_back = CallBack(env)
 model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
@@ -205,7 +205,7 @@ start = ax.scatter(
     position[0, 0],
     position[0, 1],
     position[0, 2],
-    color="blue",  # TODO: assicurati di non aver rovinato plot o salvataggi
+    color="blue",
     marker="s",
 )
 stop = ax.scatter(

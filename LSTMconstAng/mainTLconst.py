@@ -93,7 +93,7 @@ model.learn(total_timesteps=3000000, progress_bar=True, callback=call_back)
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
 print(mean_reward)
-model.save("ppo_recurrentTL3Const")  # TODO: cambia tutti Cost in Const
+model.save("ppo_recurrentTL3Const")
 
 # TESTING
 # Remove to demonstrate saving and loading

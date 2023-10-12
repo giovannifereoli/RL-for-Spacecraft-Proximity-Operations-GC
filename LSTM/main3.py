@@ -46,7 +46,7 @@ x0r_state = np.array(
         -1.61122476e-10,
         3.34605533e-06,
         -1.43029505e-10,
-        -1.27335994e-05,  # TODO: metti a posto codici, fai andare, rilassa constraints
+        -1.27335994e-05,
     ]
 )
 x0r_mass = np.array([mass / m_star])
@@ -84,10 +84,10 @@ model = RecurrentPPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.00005,  # TODO: ritorna 0.00005 come tutto
+    learning_rate=0.00005,
     gamma=0.99,
     gae_lambda=1,
-    clip_range=0.08,
+    clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-3,
     policy_kwargs=dict(n_lstm_layers=2),

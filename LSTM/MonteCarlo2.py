@@ -96,7 +96,7 @@ ToF_mean, ToF_std = 0, 0
 tc_mean, tc_std = 0, 0
 
 # Approach Corridor: truncated cone + cylinder
-len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
+len_cut = 2 * np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
 rad_kso = rho_max + len_cut
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
@@ -158,13 +158,13 @@ for num_ep in range(num_episode_MCM):
     # Plot Trajectory
     plt.figure(1)
     traj = ax.plot3D(
-        obs_vec[:, 6] * l_star,
-        obs_vec[:, 7] * l_star,
         obs_vec[:, 8] * l_star,
+        obs_vec[:, 7] * l_star,
+        obs_vec[:, 6] * l_star,
         c=np.random.rand(
             3,
         ),
-        linewidth=2,
+        linewidth=1.5,
     )
 
     # Plot V
@@ -271,7 +271,7 @@ app_direction = ax.plot3D(
 )
 ax.set_xlabel("$\delta x$ [m]", labelpad=15)
 plt.xticks([0])
-ax.plot_surface(x_cone, y_cone, z_cone, color="k", alpha=0.1)
+ax.plot_surface(1.1 * x_cone, y_cone, 1.1 * z_cone, color="k", alpha=0.1)  # x 1.1
 plt.legend(loc="upper center", ncol=2, bbox_to_anchor=(0.5, 0.88))
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
 ax.zaxis.set_rotate_label(False)
@@ -285,6 +285,7 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.view_init(elev=0, azim=0)
+'''
 ax.set_title(
     " $S_r$ : %.1f %% "
     "\n $\mu_{|\mathbf{x}_f|}$: [%.3f m, %.3f m/s] "
@@ -293,7 +294,7 @@ ax.set_title(
     % (prob_RVD, posfin_mean, velfin_mean, posfin_std, velfin_std, dv_mean, dv_std),
     y=1,
     pad=-3,
-)
+)'''
 plt.savefig("plots\MCM_Trajectory2.pdf")  # Save
 
 # Stability Analysis
@@ -326,7 +327,7 @@ plt.semilogy(
     linestyle="dashed"
 )
 plt.legend(["CPU Time", "Mean CPU Time"])
-plt.grid(True)
+plt.grid(True, which='both')
 plt.xlabel("Sample Step [-]")
 plt.ylabel("Computational Cost [s]")
 plt.savefig("plots\Cost2.pdf")

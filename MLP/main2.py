@@ -14,7 +14,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 100
+ToF = 200
 batch_size = 64
 
 rho_max = 270
@@ -57,7 +57,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             20 * np.ones(3) / l_star,
-            0.1 * np.ones(3) / (l_star / t_star),
+            0.5 * np.ones(3) / (l_star / t_star),
             0.005 * x0r_mass,
             np.zeros(1)
         )
@@ -98,7 +98,7 @@ print(model.policy)
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=6000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=12000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)

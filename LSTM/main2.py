@@ -87,8 +87,8 @@ model = RecurrentPPO(
     learning_rate=0.00005,
     gamma=0.99,
     gae_lambda=1,
-    clip_range=0.08,
-    max_grad_norm=0.09,
+    clip_range=0.1,
+    max_grad_norm=0.1,
     ent_coef=1e-3,
     policy_kwargs=dict(n_lstm_layers=2),
     tensorboard_log="./tensorboard/"
@@ -98,7 +98,7 @@ print(model.policy)  # OSS: questo dovrebbe andare 8M e l'altro 4M
 
 # Start learning
 call_back = CallBack(env)
-model.learn(total_timesteps=10000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=12000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)

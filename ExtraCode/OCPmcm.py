@@ -150,7 +150,7 @@ dv = np.NaN
 dv_mean, dv_std = 0, 0
 
 # Approach Corridor
-rad_kso = 50
+rad_kso = 75
 ang_corr = np.deg2rad(20)
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, y_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
@@ -236,7 +236,7 @@ while num_ep < num_episode_MCM:
             c=np.random.rand(
                 3,
             ),
-            linewidth=2,
+            linewidth=1.5,
         )
 
         # Statistics
@@ -277,11 +277,12 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.set_aspect("equal", "box")
+'''
 ax.set_title(
     "\n $\mu_{\Delta V}, \sigma_{\Delta V}$: %.3f m/s, %.3f m/s"
     % (dv_mean, dv_std),
     y=0.8,
-)
+)'''
 ax.view_init(elev=0, azim=0)
 plt.savefig(".\OCPmcm.pdf")
 plt.show()

@@ -22,7 +22,7 @@ def lrsched():
             lr = 0.000005
         return lr
 
-    return reallr  # TODO: ricontrolla tutto
+    return reallr
 
 # TRAINING
 # Data and initialization
@@ -39,7 +39,7 @@ rhodot_max = 6
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
-safety_vel = 0.1
+safety_vel = 0.01
 
 max_thrust = 29620
 mass = 21000
@@ -104,7 +104,7 @@ model = RecurrentPPO(
     learning_rate=0.00005,
     gamma=0.99,
     gae_lambda=1,
-    clip_range=0.09,
+    clip_range=0.1,
     max_grad_norm=0.1,
     ent_coef=1e-3,
     policy_kwargs=dict(n_lstm_layers=2),
@@ -193,7 +193,7 @@ start = ax.scatter(
     position[0, 0],
     position[0, 1],
     position[0, 2],
-    color="blue",  # TODO: assicurati di non aver rovinato plot o salvataggi
+    color="blue",
     marker="s",
 )
 stop = ax.scatter(
