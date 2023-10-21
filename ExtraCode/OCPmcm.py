@@ -150,7 +150,7 @@ dv = np.NaN
 dv_mean, dv_std = 0, 0
 
 # Approach Corridor
-rad_kso = 75
+rad_kso = 65
 ang_corr = np.deg2rad(20)
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, y_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]

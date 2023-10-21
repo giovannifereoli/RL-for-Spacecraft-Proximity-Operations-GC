@@ -14,7 +14,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 100
+ToF = 200
 batch_size = 64
 
 rho_max = 270
@@ -84,7 +84,7 @@ model = RecurrentPPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.00005,
+    learning_rate=0.00001,
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
@@ -94,7 +94,7 @@ model = RecurrentPPO(
     tensorboard_log="./tensorboard/"
 )
 
-print(model.policy)  # OSS: questo dovrebbe andare 8M e l'altro 4M
+print(model.policy)
 
 # Start learning
 call_back = CallBack(env)

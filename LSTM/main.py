@@ -24,6 +24,7 @@ def lrsched():
 
     return reallr
 
+
 # TRAINING
 # Data and initialization
 m_star = 6.0458 * 1e24  # Kilograms
@@ -31,7 +32,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 100
+ToF = 150
 batch_size = 64
 
 rho_max = 70
@@ -101,7 +102,7 @@ model = RecurrentPPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.00005,
+    learning_rate=0.00001,
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
@@ -123,7 +124,7 @@ eval_callback = EvalCallback(
     verbose=1,  # TODO: prova questo o eval
 )
 call_back = CallBack(env)
-model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
+model.learn(total_timesteps=10000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)

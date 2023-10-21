@@ -186,7 +186,7 @@ for num_ep in range(num_episode_MCM):
         c=np.random.rand(
             3,
         ),
-        linewidth=2,
+        linewidth=1.5,
     )
 
     # DV and ToF Computation

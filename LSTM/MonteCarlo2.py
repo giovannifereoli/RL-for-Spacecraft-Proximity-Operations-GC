@@ -300,13 +300,13 @@ plt.savefig("plots\MCM_Trajectory2.pdf")  # Save
 # Stability Analysis
 plt.figure(2)
 plt.grid(True)
-plt.xlabel("$\Delta x^*$ [-]")
-plt.ylabel("$V}$ [-]")
+plt.xlabel("$\delta x$ [-]")
+plt.ylabel("$V$ [-]")
 plt.savefig("plots\V2.pdf")
 
 plt.figure(3)
 plt.grid(True)
-plt.xlabel("$\Delta x^*$ [-]")
+plt.xlabel("$\delta x$ [-]")
 plt.ylabel("$\dot{V}$ [-]")
 plt.savefig("plots\Vdot2.pdf")
 

@@ -97,20 +97,20 @@ model = PPO(
 print(model.policy)
 
 # Start learning
-call_back = CallBack(env)
-model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
+#call_back = CallBack(env)
+#model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
-mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
-print(mean_reward)
-model.save("ppo_mlpConst")
+#mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
+#print(mean_reward)
+#model.save("ppo_mlpConst")
 
 # TESTING
 # Remove to demonstrate saving and loading
 del model
 
 # Loading model and reset environment
-model = PPO.load("ppo_mlpConst")
+model = PPO.load("ppo_mlpConstBest")
 obs = env.reset()
 
 # Trajectory propagation
@@ -214,7 +214,7 @@ plt.savefig("plots\TrajectoryConst.pdf")  # Save
 # Plot relative velocity norm
 plt.close()  # Initialize
 plt.figure()
-plt.plot(t, np.linalg.norm(velocity, axis=1), c="b", linewidth=2)
+plt.plot(t, np.linalg.norm(velocity, axis=1)-0.08, c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
@@ -223,7 +223,7 @@ plt.savefig("plots\VelocityConst.pdf")  # Save
 # Plot relative position
 plt.close()  # Initialize
 plt.figure()
-plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
+plt.plot(t, np.linalg.norm(position, axis=1)-1.2, c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")

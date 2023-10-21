@@ -14,7 +14,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 1
-ToF = 150
+ToF = 1000
 batch_size = 64
 
 rho_max = 1400
@@ -97,8 +97,8 @@ model = RecurrentPPO(
 print(model.policy)  # OSS: questo dovrebbe andare oltre 12M
 
 # Start learning
-call_back = CallBack(env)  # TODO: fallo che si ferma/salva il best, se no così è troppo casuale
-model.learn(total_timesteps=16000000, progress_bar=True, callback=call_back)
+call_back = CallBack(env)
+model.learn(total_timesteps=20000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)

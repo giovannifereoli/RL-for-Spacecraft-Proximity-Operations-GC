@@ -16,6 +16,7 @@ plt.close()  # Initialize
 plt.figure()
 plt.semilogy(step, reward + 0.8, c="b", linewidth=2)
 plt.grid(True, which='both')
+plt.xlim(0, 5*1e6)
 plt.xlabel("Learning Step [-]")
 plt.ylabel("Mean Reward [-]")
 plt.savefig("plots\MeanReward.pdf")  # Save
