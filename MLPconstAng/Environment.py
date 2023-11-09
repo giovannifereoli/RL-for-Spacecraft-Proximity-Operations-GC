@@ -341,7 +341,7 @@ class ArpodCrtbp(gym.Env):
             reward += 50
             self.done = True
 
-        # Plume impingement (add maybe tangential velocity constraint and sensor not toward sun?)
+        # Plume impingement
 
         if (
             np.arccos(

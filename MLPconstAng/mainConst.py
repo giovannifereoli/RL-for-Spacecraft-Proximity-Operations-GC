@@ -214,7 +214,7 @@ plt.savefig("plots\TrajectoryConst.pdf")  # Save
 # Plot relative velocity norm
 plt.close()  # Initialize
 plt.figure()
-plt.plot(t, np.linalg.norm(velocity, axis=1)-0.08, c="b", linewidth=2)
+plt.plot(t, np.linalg.norm(velocity, axis=1)-0.1, c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")

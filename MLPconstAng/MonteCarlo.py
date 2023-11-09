@@ -95,7 +95,7 @@ ToF_mean, ToF_std = 0, 0
 tc_mean, tc_std = 0, 0
 
 # Approach Corridor: truncated cone + cylinder
-len_cut = np.sqrt((safety_radius**2) / np.square(np.tan(ang_corr)))
+len_cut = np.sqrt((1**2) / np.square(np.tan(ang_corr)))
 rad_kso = rho_max + len_cut
 rad_entry = np.tan(ang_corr) * rad_kso
 x_cone, z_cone = np.mgrid[-rad_entry:rad_entry:1000j, -rad_entry:rad_entry:1000j]
@@ -120,7 +120,7 @@ for num_ep in range(num_episode_MCM):
         # Action sampling and propagation
         t1 = time.perf_counter()
         action, _states = model.predict(
-            obs, deterministic=False
+            obs, deterministic=True
         )  # OSS: Episode start signals are used to reset the lstm states
         obs, rewards, done, info = env.step(action)
         tc = time.perf_counter() - t1
@@ -140,7 +140,7 @@ for num_ep in range(num_episode_MCM):
         c=np.random.rand(
             3,
         ),
-        linewidth=2,
+        linewidth=1.5,
     )
 
     # DV and ToF Computation

@@ -285,7 +285,7 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 ax.view_init(elev=0, azim=0)
-'''ax.set_title(
+ax.set_title(
     " $S_r$ : %.1f %% "
     "\n $\mu_{|\mathbf{x}_f|}$: [%.3f m, %.3f m/s] "
     "\n $\sigma_{|\mathbf{x}_f|}$: [%.3f m, %.3f m/s] "
@@ -293,7 +293,7 @@ ax.view_init(elev=0, azim=0)
     % (prob_RVD, posfin_mean, velfin_mean, posfin_std, velfin_std, dv_mean, dv_std),
     y=1,
     pad=-3,
-)'''
+)
 print(dv_mean)
 plt.savefig("plots\MCM_Trajectory.pdf")  # Save
 
@@ -322,11 +322,25 @@ plt.semilogy(
 plt.semilogy(
     np.linspace(0, len(dt_cost), len(dt_cost)),
     tc_mean * np.ones(len(dt_cost)),
-    c="b",
+    c="k",
     linewidth=2,
     linestyle="dashed"
 )
-plt.legend(["CPU Time", "Mean CPU Time"])
+plt.semilogy(
+    np.linspace(0, len(dt_cost), len(dt_cost)),
+    (tc_mean + tc_std) * np.ones(len(dt_cost)),
+    c="b",
+    linewidth=2,
+    linestyle="dashdot"
+)
+plt.semilogy(
+    np.linspace(0, len(dt_cost), len(dt_cost)),
+    (tc_mean - tc_std) * np.ones(len(dt_cost)),
+    c="b",
+    linewidth=2,
+    linestyle="dashdot"
+)
+plt.legend(["CPU-Time", "Mean CPU-Time", "Std CPU-Time"])
 plt.grid(True, which='both')
 plt.xlabel("Sample Step [-]")
 plt.ylabel("Computational Cost [s]")

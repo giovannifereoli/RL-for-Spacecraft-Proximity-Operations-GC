@@ -21,7 +21,7 @@ rhodot_max = 6
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
-safety_vel = 0.01
+safety_vel = 0.1
 
 max_thrust = 29620
 mass = 21000
@@ -81,7 +81,7 @@ check_env(env)
 
 # TESTING with MCM
 # Loading model and reset environment
-model = PPO.load("ppo_mlp01")
+model = PPO.load("ppo_mlp")
 print(model.policy)
 
 # Trajectory propagation

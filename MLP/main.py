@@ -14,7 +14,7 @@ l_star = 3.844 * 1e8  # Meters
 t_star = 375200  # Seconds
 
 dt = 0.5
-ToF = 100
+ToF = 150
 batch_size = 64
 
 rho_max = 70
@@ -84,7 +84,7 @@ model = PPO(
     batch_size=batch_size,
     n_steps=int(batch_size * ToF / dt),
     n_epochs=10,
-    learning_rate=0.00005,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
+    learning_rate=0.00003,  # OSS: ormai sono abbastanza sicuro con questi HP. LR/batch possono cambiare per velocità convergenza, però l'importante è che converga.
     gamma=0.99,
     gae_lambda=1,
     clip_range=0.1,
@@ -97,20 +97,20 @@ model = PPO(
 print(model.policy)
 
 # Start learning
-# call_back = CallBack(env)
-# model.learn(total_timesteps=8000000, progress_bar=True, callback=call_back)
+call_back = CallBack(env)
+model.learn(total_timesteps=10000000, progress_bar=True, callback=call_back)
 
 # Evaluation and saving
-# mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
-# print(mean_reward)
-# model.save("ppo_mlp")
+mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20, warn=False)
+print(mean_reward)
+model.save("ppo_mlp01B")
 
 # TESTING
 # Remove to demonstrate saving and loading
-# del model
+del model
 
 # Loading model and reset environment
-model = PPO.load("ppo_mlp01")
+model = PPO.load("ppo_mlp01B")
 obs = env.reset()
 
 # Trajectory propagation

@@ -144,6 +144,7 @@ num_episode_MCM = 500
 num_ep = 0
 dv = np.NaN
 dv_mean, dv_std = 0, 0
+DT_mean, DT_std = 0, 0
 
 # Approach Corridor
 rad_kso = 260
@@ -223,6 +224,7 @@ while num_ep < num_episode_MCM:
     if rf < 5:
         num_ep += +1
         dv = 310 * 9.81 * np.log(x_mass[0] / x_mass[-1])
+        DT = t0[-1]
 
         # Plot
         ax.plot3D(
@@ -232,12 +234,13 @@ while num_ep < num_episode_MCM:
             c=np.random.rand(
                 3,
             ),
-            linewidth=2,
+            linewidth=1.5,
         )
 
         # Statistics
         if num_ep == 0:
             dv_mean = dv
+            DT_mean = DT
         else:
             dv_mean = np.mean([dv_mean, dv])
             dv_std = np.std(
@@ -247,6 +250,17 @@ while num_ep < num_episode_MCM:
                     dv,
                 ]
             )
+            DT_mean = np.mean([DT_mean, DT])
+            DT_std = np.std(
+                [
+                    DT_mean + DT_std,
+                    DT_mean - DT_std,
+                    DT,
+                ]
+            )
+
+# Print Info
+print("ToF mean and standard deviation:", DT_mean, ",", DT_std)
 
 # Plot
 goal = ax.scatter(0, 0, 0, color="red", marker="^", label="Target")

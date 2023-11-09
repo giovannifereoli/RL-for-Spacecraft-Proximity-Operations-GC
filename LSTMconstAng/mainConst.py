@@ -149,7 +149,7 @@ actions_vec = np.zeros(3)
 while True:
     # Action sampling and propagation
     action, lstm_states = model.predict(
-        obs, state=lstm_states, episode_start=np.array([done]), deterministic=True
+        obs, state=lstm_states, episode_start=np.array([done]), deterministic=False
     )  # OSS: Episode start signals are used to reset the lstm states
     obs, rewards, done, info = env.step(action)
 

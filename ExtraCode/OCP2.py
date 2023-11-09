@@ -243,6 +243,40 @@ ax.set_title(
     pad=30,
 )
 plt.savefig(".\OCP2.pdf")
+
+
+# Plot Thrust
+t = t0
+Tmax = 29620
+Tx = Tmax * u0[:, 0] * u0[:, 3]
+Ty = Tmax * u0[:, 1] * u0[:, 3]
+Tz = Tmax * u0[:, 2] * u0[:, 3]
+plt.figure(2)
+plt.plot(
+    t,
+    Tx,
+    c="g",
+    linewidth=2,
+)
+plt.plot(
+    t,
+    Ty,
+    c="b",
+    linewidth=2,
+)
+plt.plot(
+    t,
+    Tz,
+    c="r",
+    linewidth=2,
+)
+plt.legend(["$T_x$", "$T_y$", "$T_z$"], loc="upper right")
+plt.grid(True)
+plt.xlabel("Time [s]")
+plt.ylabel("Thrust [N]")
+plt.xlim(t[0], t[-1])
+plt.savefig(".\OCP2_thrust.pdf")
 plt.show()
+
 
 

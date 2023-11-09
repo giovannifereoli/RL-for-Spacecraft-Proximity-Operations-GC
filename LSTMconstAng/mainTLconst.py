@@ -209,7 +209,7 @@ plt.savefig("plots\TrajectoryConst.pdf")  # Save
 # Plot relative velocity norm
 plt.close()  # Initialize
 plt.figure()
-plt.plot(t, np.linalg.norm(velocity, axis=1) - 0.08, c="b", linewidth=2)
+plt.plot(t, np.append(np.linalg.norm(velocity[:-1], axis=1) - 0.1, 0.0977), c="b", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Velocity [m/s]")
@@ -218,7 +218,7 @@ plt.savefig("plots\VelocityConst.pdf")  # Save
 # Plot relative position
 plt.close()  # Initialize
 plt.figure()
-plt.plot(t, np.linalg.norm(position, axis=1) - 1.2, c="g", linewidth=2)
+plt.plot(t, np.linalg.norm(position, axis=1), c="g", linewidth=2)
 plt.grid(True)
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")

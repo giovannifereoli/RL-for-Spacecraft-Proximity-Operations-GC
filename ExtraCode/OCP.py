@@ -86,11 +86,7 @@ def terminal_constraints(x, t, x0, t0):
     return [x[6], x[7], x[8], x[9], x[10], x[11]]
 
 
-ocp = mp.OCP(
-    n_states=13,
-    n_controls=4,
-    n_phases=1
-)
+ocp = mp.OCP(n_states=13, n_controls=4, n_phases=1)
 ocp.dynamics[0] = dynamics
 ocp.running_costs[0] = running_costs
 ocp.terminal_constraints[0] = terminal_constraints
@@ -145,9 +141,9 @@ ocp.lbx[0] = [
     -81.99561388926969 / (l_star / t_star),
     -105.88740121359594 / (l_star / t_star),
     -881.9954974936014 / (l_star / t_star),
-    - np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
-    - np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
-    - np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
+    -np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
+    -np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
+    -np.linalg.norm(ocp.x00[0][6:9]) * 1.1,
     -5 / (l_star / t_star),
     -5 / (l_star / t_star),
     -5 / (l_star / t_star),
@@ -185,7 +181,7 @@ ocp.scale_x = [
     l_star / t_star / 0.5,
     l_star / t_star / 0.5,
     l_star / t_star / 0.5,
-    m_star / 21000
+    m_star / 21000,
 ]
 ocp.scale_t = t_star / 30
 ocp.validate()
@@ -239,12 +235,41 @@ ax.zaxis.pane.fill = False
 ax.set_aspect("equal", "box")
 ax.view_init(elev=0, azim=0)
 ax.set_title(
-    "$r_f$, $v_f$: [%.3f m, %.3f m/s]  - $\Delta V$: %.3f m/s "
-    % (rf, vf, dV),
+    "$r_f$, $v_f$: [%.3f m, %.3f m/s]  - $\Delta V$: %.3f m/s " % (rf, vf, dV),
     y=1,
     pad=30,
 )
 plt.savefig(".\OCP.pdf")
+
+# Plot Thrust
+t = t0
+Tmax = 29620
+Tx = Tmax * u0[:, 0] * u0[:, 3]
+Ty = Tmax * u0[:, 1] * u0[:, 3]
+Tz = Tmax * u0[:, 2] * u0[:, 3]
+plt.figure(2)
+plt.plot(
+    t,
+    Tx,
+    c="g",
+    linewidth=2,
+)
+plt.plot(
+    t,
+    Ty,
+    c="b",
+    linewidth=2,
+)
+plt.plot(
+    t,
+    Tz,
+    c="r",
+    linewidth=2,
+)
+plt.legend(["$T_x$", "$T_y$", "$T_z$"], loc="upper right")
+plt.grid(True)
+plt.xlabel("Time [s]")
+plt.ylabel("Thrust [N]")
+plt.xlim(t[0], t[-1])
+plt.savefig(".\OCP_thrust.pdf")
 plt.show()
-
-
