@@ -42,7 +42,7 @@ ang_corr = np.deg2rad(20)
 safety_radius = 1
 safety_vel = 0.1
 
-max_thrust = 29620  # TODO: metti arrows thrust?
+max_thrust = 29620
 mass = 21000
 state_space = 18
 actions_space = 3
