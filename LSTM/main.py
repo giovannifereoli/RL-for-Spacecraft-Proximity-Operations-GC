@@ -40,7 +40,7 @@ rhodot_max = 6
 
 ang_corr = np.deg2rad(20)
 safety_radius = 1
-safety_vel = 0.01
+safety_vel = 0.1
 
 max_thrust = 29620
 mass = 21000
@@ -75,7 +75,7 @@ x0ivp_std_vec = np.absolute(
         (
             np.zeros(6),
             5 * np.ones(3) / l_star,
-            0.5 * np.ones(3) / (l_star / t_star),
+            0.5 * np.ones(3) / (l_star / t_star),  # 800 percento
             0.005 * x0r_mass,
             np.zeros(1),
         )
