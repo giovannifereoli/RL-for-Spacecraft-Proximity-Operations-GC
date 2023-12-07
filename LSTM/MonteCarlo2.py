@@ -158,9 +158,9 @@ for num_ep in range(num_episode_MCM):
     # Plot Trajectory
     plt.figure(1)
     traj = ax.plot3D(
-        obs_vec[:, 8] * l_star,
-        obs_vec[:, 7] * l_star,
         obs_vec[:, 6] * l_star,
+        obs_vec[:, 7] * l_star,
+        obs_vec[:, 8] * l_star,
         c=np.random.rand(
             3,
         ),
@@ -271,7 +271,7 @@ app_direction = ax.plot3D(
 )
 ax.set_xlabel("$\delta x$ [m]", labelpad=15)
 plt.xticks([0])
-ax.plot_surface(1.1 * x_cone, y_cone, 1.1 * z_cone, color="k", alpha=0.1)  # x 1.1
+ax.plot_surface(x_cone, y_cone, z_cone, color="k", alpha=0.1)
 plt.legend(loc="upper center", ncol=2, bbox_to_anchor=(0.5, 0.88))
 ax.set_ylabel("$\delta y$ [m]", labelpad=10)
 ax.zaxis.set_rotate_label(False)

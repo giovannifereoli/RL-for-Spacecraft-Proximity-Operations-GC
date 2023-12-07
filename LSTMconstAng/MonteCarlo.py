@@ -158,9 +158,9 @@ for num_ep in range(num_episode_MCM):
     # Plot Trajectory
     plt.figure(1)
     traj = ax.plot3D(
-        obs_vec[:, 8] * l_star - 0.2,
-        obs_vec[:, 7] * l_star - 1,
-        obs_vec[:, 6] * l_star - 0.2,
+        obs_vec[:, 8] * l_star,
+        obs_vec[:, 7] * l_star,
+        obs_vec[:, 6] * l_star,
         c=np.random.rand(
             3,
         ),
