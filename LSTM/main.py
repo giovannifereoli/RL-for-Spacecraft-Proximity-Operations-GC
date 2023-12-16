@@ -164,7 +164,7 @@ while True:
 
 # PLOTS
 # Plotted quantities
-position = obs_vec[1:-1, 6:9] * l_star
+position = obs_vec[1:-1, 6:9] * l_star  # TODO: why slicing? it ruins plots!
 velocity = obs_vec[1:-1, 9:12] * l_star / t_star
 mass = obs_vec[1:-1, 12] * m_star
 thrust = actions_vec[1:-1, :] * (m_star * l_star / t_star**2)
