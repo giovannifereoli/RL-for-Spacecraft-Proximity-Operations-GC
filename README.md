@@ -1,6 +1,6 @@
 <p align="center">
   <img align="center" src="https://getvectorlogo.com/wp-content/uploads/2019/10/politecnico-di-milano-vector-logo.png" width="250" />
-  <img align="center" src="https://www.colorado.edu/brand/sites/default/files/styles/small_500px_25_display_size_/public/2024-07/boulder-fl-master-2_0.png?itok=QmQWsKoJ" width="400" />
+  <img align="center" src="https://www.colorado.edu/brand/sites/default/files/styles/large_image_style/public/page/boulder-one-line-reverse.png?itok=edXL_T9O" width="400" />
 </p>
 
 <div align="center">
