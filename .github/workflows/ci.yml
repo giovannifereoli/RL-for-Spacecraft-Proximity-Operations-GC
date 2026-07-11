@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9"]
+
+    env:
+      MPLBACKEND: Agg
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Bootstrap pip tooling for gym 0.21
+        run: |
+          python -m pip install "pip==23.1.2" "setuptools==65.5.0" "wheel==0.38.4" "packaging==21.3"
+
+      - name: Install CPU PyTorch then runtime dependencies
+        run: |
+          python -m pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements.txt
+
+      - name: Install development dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt
+
+      - name: Syntax check (compileall)
+        run: |
+          python -m compileall MLP LSTM MLPconstAng LSTMconstAng ExtraCode scripts tests
+
+      - name: Pytest smoke suite
+        run: |
+          pytest -q
+
+      - name: Environment smoke script
+        run: |
+          python scripts/smoke_test_envs.py
