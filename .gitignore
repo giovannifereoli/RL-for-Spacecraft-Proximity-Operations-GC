@@ -1,0 +1,32 @@
+# Bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Matplotlib / Jupyter
+.ipynb_checkpoints/
+
+# Local training artifacts (do not commit accidental regenerations)
+*.zip
+!ExtraCode/LSTM_old/ppo_recurrentDense.zip
+tensorboard/PPO_*
+tensorboard/RecurrentPPO_*
+
+# Temporary smoke outputs
+tmp_blob.py
+_wrap_mains.py

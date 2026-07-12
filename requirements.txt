@@ -1,0 +1,29 @@
+# Core runtime dependencies for environment smoke tests and training scripts.
+# Verified on Python 3.9 with the bootstrap pins below.
+#
+# Gym 0.21.0 has invalid extras metadata that breaks modern pip/packaging.
+# Install bootstrap tooling first (also used by CI):
+#   python -m pip install "pip==23.1.2" "setuptools==65.5.0" "wheel==0.38.4" "packaging==21.3"
+# then:
+#   python -m pip install -r requirements.txt
+#
+# Evidence for pins:
+# - gym==0.21.0: required by original Gym Env API (reset -> obs, step -> 4-tuple).
+#   Newer pip (>=24.1) / packaging / wheel reject gym 0.21 metadata (opencv-python>=3.).
+# - numpy<2: avoids NumPy 2.x ABI issues with torch 2.0.x and scipy 1.11.x.
+# - stable-baselines3==1.8.0 / sb3-contrib==1.8.0: last SB3 line tested here against gym 0.21
+#   without forcing a Gymnasium migration.
+# - torch==2.0.1: closest verified match to README's PyTorch 2.0.0 claim (CPU wheel OK).
+
+numpy>=1.23,<2
+scipy>=1.9,<1.12
+matplotlib>=3.5,<3.9
+pandas>=1.5,<2.1
+gym==0.21.0
+torch==2.0.1
+stable-baselines3==1.8.0
+sb3-contrib==1.8.0
+tensorboard>=2.10,<2.15
+tqdm
+cloudpickle
+rich

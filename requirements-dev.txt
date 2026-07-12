@@ -1,0 +1,2 @@
+# Development / CI dependencies
+pytest>=7.0,<9
